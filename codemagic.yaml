@@ -28,25 +28,21 @@ workflows:
       - name: Build iOS (No codesign)
         script: |
           set -e
-          # Step 1: Let Flutter generate all necessary Xcode configuration files
-          flutter build ios --release --no-codesign --no-pub || true
+          # Step 1: Let Flutter generate Xcode configuration files WITHOUT building
+          flutter build ios --release --config-only --no-pub
           
-          # Step 2: Build directly with xcodebuild for full control
+          # Step 2: Build directly with xcodebuild using the properties inside Release.xcconfig
+          # We MUST NOT pass CODE_SIGNING_ALLOWED=NO here because of an Xcode 15 target graph bug!
           cd ios
-          xcodebuild -workspace Runner.xcworkspace \
+          xcodebuild build -workspace Runner.xcworkspace \
             -scheme Runner \
             -configuration Release \
-            -destination 'generic/platform=iOS' \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY="" \
-            CLANG_ENABLE_EXPLICIT_MODULES=NO \
-            BUILD_DIR=$CM_BUILD_DIR/build/ios 2>&1
+            -destination 'generic/platform=iOS' 2>&1
           cd ..
       - name: Create IPA from .app
         script: |
           mkdir -p build/ios/ipa/Payload
-          cp -r build/ios/iphoneos/Runner.app build/ios/ipa/Payload/
+          cp -r build/ios/Release-iphoneos/Runner.app build/ios/ipa/Payload/
           cd build/ios/ipa
           zip -r attendance_system_no_sign.ipa Payload
     artifacts:
