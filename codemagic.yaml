@@ -7,21 +7,24 @@ workflows:
     instance_type: mac_mini_m1
     environment:
       flutter: stable
+      xcode: latest # Ensures we use the most recent stable Xcode
     scripts:
       - name: Flutter Clean & Get packages
         script: |
+          set -e
           flutter clean
           flutter pub get
       - name: CocoaPods installation
         script: |
+          set -e
           cd ios
           rm -rf Podfile.lock Pods
-          # Clear Xcode cache to avoid stale module maps
-          rm -rf ~/Library/Developer/Xcode/DerivedData
+          pod repo update
           pod install --repo-update
           cd ..
       - name: Build iOS (No codesign)
         script: |
+          set -e
           flutter build ios --release --no-codesign --no-pub
       - name: Create IPA from .app
         script: |
