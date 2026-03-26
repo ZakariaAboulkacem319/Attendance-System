@@ -1,49 +1,19 @@
 workflows:
-  ios-adhoc:
-    name: iOS (Ad Hoc) - installable IPA
-    max_build_duration: 90
-    environment:
-      flutter: stable
-      xcode: latest
-      cocoapods: default
-      ios_signing:
-        distribution_type: ad_hoc
-        bundle_identifier: com.example.attendanceSystem
-      vars:
-        # Optionnel: définir sur Codemagic si tu veux surcharger
-        # BUNDLE_ID: com.yourcompany.attendanceSystem
-        # XCODE_WORKSPACE: ios/Runner.xcworkspace
-        # XCODE_SCHEME: Runner
-        XCODE_WORKSPACE: ios/Runner.xcworkspace
-        XCODE_SCHEME: Runner
-    scripts:
-      - name: Flutter pub get
-        script: flutter pub get
-      - name: Set up Xcode code signing
-        script: xcode-project use-profiles
-      - name: Build IPA (ad-hoc)
-        script: |
-          flutter build ipa --release --export-method ad-hoc
-    artifacts:
-      - build/ios/ipa/*.ipa
-      - build/ios/ipa/*.dSYM.zip
-      - flutter_drive.log
-
   ios-no-sign:
-    name: iOS (No codesign) - build check only
+    name: iOS No Codesign
     max_build_duration: 60
     environment:
       flutter: stable
       xcode: latest
-      cocoapods: default
     scripts:
-      - name: Clean
-        script: |
-          flutter clean
-          rm -rf ios/Pods ios/Podfile.lock
-      - name: Flutter pub get
+      - name: Get packages
         script: flutter pub get
-      - name: Build iOS (no codesign)
-        script: flutter build ios --release --no-codesign
+      - name: Build iOS
+        script: |
+          flutter build ios --release --no-codesign
+          cd build/ios/iphoneos
+          mkdir Payload
+          cp -r Runner.app Payload
+          zip -r Runner.ipa Payload
     artifacts:
-      - build/ios/iphoneos/Runner.app
+      - build/ios/iphoneos/Runner.ipa
