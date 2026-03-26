@@ -7,7 +7,10 @@ workflows:
     instance_type: mac_mini_m1
     environment:
       flutter: stable
-      xcode: latest # Ensures we use the most recent stable Xcode
+      xcode: latest
+      vars:
+        XCODE_WORKSPACE: "ios/Runner.xcworkspace"
+        XCODE_SCHEME: "Runner"
     scripts:
       - name: Flutter Clean & Get packages
         script: |
@@ -19,13 +22,15 @@ workflows:
           set -e
           cd ios
           rm -rf Podfile.lock Pods
-          pod repo update
+          pod update
           pod install --repo-update
           cd ..
       - name: Build iOS (No codesign)
         script: |
           set -e
-          flutter build ios --release --no-codesign --no-pub
+          # Build using xcodebuild directly to ensure workspace is used, or let flutter do it.
+          # We use verbose to see exactly why cloud_firestore fails to compile if it does.
+          flutter build ios --release --no-codesign --no-pub -v
       - name: Create IPA from .app
         script: |
           mkdir -p build/ios/ipa/Payload
