@@ -5,7 +5,7 @@ workflows:
     environment:
       flutter: stable
       xcode: latest
-    cacheing:
+    cache:
       cache_paths:
         - ~/.pub-cache
         - ios/Pods
