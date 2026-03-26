@@ -31,16 +31,18 @@ workflows:
       - name: Build iOS (No codesign)
         script: |
           set -e
+          # Step 1: Let Flutter generate Xcode configuration files WITHOUT building
           flutter build ios --release --config-only --no-codesign --no-pub
+          
+          # Step 2: Build directly with xcodebuild using the properties inside Release.xcconfig
+          # WARNING: DO NOT pass CODE_SIGNING_ALLOWED=NO here (in CLI). It breaks CocoaPods dependencies in Xcode 15+.
           cd ios
           xcodebuild build \
             -workspace Runner.xcworkspace \
             -scheme Runner \
             -configuration Release \
             -destination 'generic/platform=iOS' \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY="" 2>&1
+            -derivedDataPath ../build/ios/DerivedData 2>&1
           cd ..
 
       - name: Create IPA from .app
