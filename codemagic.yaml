@@ -29,7 +29,7 @@ workflows:
         script: |
           set -e
           # Step 1: Let Flutter generate Xcode configuration files WITHOUT building
-          flutter build ios --release --config-only --no-pub
+          flutter build ios --release --config-only --no-codesign --no-pub
           
           # Step 2: Build directly with xcodebuild using the properties inside Release.xcconfig
           # We MUST NOT pass CODE_SIGNING_ALLOWED=NO here because of an Xcode 15 target graph bug!
