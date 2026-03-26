@@ -35,6 +35,9 @@ post_install do |installer|
       config.build_settings['CODE_SIGNING_ALLOWED'] = 'NO'
       config.build_settings['CODE_SIGNING_REQUIRED'] = 'NO'
       config.build_settings['EXPANDED_CODE_SIGN_IDENTITY'] = ""
+      config.build_settings['COMPILER_INDEX_STORE_ENABLE'] = 'NO'
+      config.build_settings['GCC_OPTIMIZATION_LEVEL'] = 's'
+      config.build_settings['SWIFT_OPTIMIZATION_LEVEL'] = '-O'
     end
   end
 end
