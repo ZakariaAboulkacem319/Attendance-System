@@ -28,9 +28,21 @@ workflows:
       - name: Build iOS (No codesign)
         script: |
           set -e
-          # Build using xcodebuild directly to ensure workspace is used, or let flutter do it.
-          # We use verbose to see exactly why cloud_firestore fails to compile if it does.
-          flutter build ios --release --no-codesign --no-pub -v
+          # Step 1: Let Flutter generate all necessary Xcode configuration files
+          flutter build ios --release --no-codesign --no-pub || true
+          
+          # Step 2: Build directly with xcodebuild for full control
+          cd ios
+          xcodebuild -workspace Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CLANG_ENABLE_EXPLICIT_MODULES=NO \
+            BUILD_DIR=$CM_BUILD_DIR/build/ios 2>&1
+          cd ..
       - name: Create IPA from .app
         script: |
           mkdir -p build/ios/ipa/Payload
