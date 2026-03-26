@@ -8,15 +8,21 @@ workflows:
     cache:
       cache_paths:
         - ~/.pub-cache
-        - ios/Pods
     scripts:
       - name: Get packages
-        script: flutter pub get
+        script: |
+          set -e
+          flutter pub get
+      - name: Install CocoaPods
+        script: |
+          set -e
+          cd ios
+          pod install --repo-update
+          cd ..
       - name: Build iOS
         script: |
           set -e
-          flutter build ios --no-codesign --release
-          # Search for the .app and zip it to the root
+          flutter build ios --no-codesign --release --no-pub
           APP_PATH=$(find build/ios -name "Runner.app" -type d | head -n 1)
           cd $(dirname "$APP_PATH")
           mkdir -p Payload && cp -r Runner.app Payload/
