@@ -19,7 +19,7 @@ end
 require File.expand_path(File.join('..', 'Flutter', 'generated_podhelper.rb'), __FILE__)
 
 target 'Runner' do
-  use_frameworks!
+  use_frameworks! :linkage => :static
 
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
   target 'RunnerTests' do
@@ -37,8 +37,6 @@ post_install do |installer|
       config.build_settings['COMPILER_INDEX_STORE_ENABLE'] = 'NO'
       config.build_settings['GCC_OPTIMIZATION_LEVEL'] = 's'
       config.build_settings['SWIFT_OPTIMIZATION_LEVEL'] = '-O'
-      config.build_settings['DEFINES_MODULE'] = 'YES'
-      config.build_settings['CLANG_ENABLE_MODULES'] = 'YES'
     end
   end
 end
