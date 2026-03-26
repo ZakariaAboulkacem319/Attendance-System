@@ -14,6 +14,8 @@ workflows:
       - name: CocoaPods installation
         script: |
           cd ios
+          rm -rf Podfile.lock Pods
+          pod repo update
           pod install
           cd ..
       - name: Build iOS (No codesign)
