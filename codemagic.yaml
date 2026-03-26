@@ -5,6 +5,10 @@ workflows:
     environment:
       flutter: stable
       xcode: latest
+    cacheing:
+      cache_paths:
+        - ~/.pub-cache
+        - ios/Pods
     scripts:
       - name: Get packages
         script: flutter pub get
@@ -12,10 +16,10 @@ workflows:
         script: |
           set -e
           flutter build ios --no-codesign --release
-          APP_DIR=$(find build/ios -name "Runner.app" -type d | head -n 1)
-          cd $(dirname "$APP_DIR")
-          mkdir -p Payload
-          cp -r Runner.app Payload/
+          # Search for the .app and zip it to the root
+          APP_PATH=$(find build/ios -name "Runner.app" -type d | head -n 1)
+          cd $(dirname "$APP_PATH")
+          mkdir -p Payload && cp -r Runner.app Payload/
           zip -r "$CM_BUILD_DIR/Runner.ipa" Payload
     artifacts:
       - "*.ipa"
