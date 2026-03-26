@@ -11,6 +11,11 @@ workflows:
       - name: Get Flutter packages
         script: |
           flutter pub get
+      - name: CocoaPods installation
+        script: |
+          cd ios
+          pod install
+          cd ..
       - name: Build iOS (No codesign)
         script: |
           flutter build ios --release --no-codesign
