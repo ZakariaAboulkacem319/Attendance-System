@@ -1,0 +1,64 @@
+# Default Codemagic configuration for Flutter projects
+
+workflows:
+  flutter-android:
+    name: Flutter Android
+    max_build_duration: 120
+    instance_type: mac_mini_m1
+    environment:
+      flutter: stable
+      groups:
+        - google_play_credentials # Required if publishing to Google Play
+      vars:
+        PACKAGE_NAME: "com.example.attendance_system"
+    scripts:
+      - name: Get Flutter packages
+        script: |
+          flutter pub get
+      - name: Build Android APK
+        script: |
+          flutter build apk --release
+      - name: Build Android App Bundle
+        script: |
+          flutter build appbundle --release
+    artifacts:
+      - build/app/outputs/flutter-apk/*.apk
+      - build/app/outputs/bundle/release/*.aab
+
+  flutter-ios:
+    name: Flutter iOS (No Sign)
+    max_build_duration: 120
+    instance_type: mac_mini_m1
+    environment:
+      flutter: stable
+    scripts:
+      - name: Get Flutter packages
+        script: |
+          flutter pub get
+      - name: Build iOS (No codesign)
+        script: |
+          flutter build ios --release --no-codesign
+      - name: Create IPA from .app
+        script: |
+          mkdir -p build/ios/ipa/Payload
+          cp -r build/ios/iphoneos/Runner.app build/ios/ipa/Payload/
+          cd build/ios/ipa
+          zip -r attendance_system_no_sign.ipa Payload
+    artifacts:
+      - build/ios/ipa/*.ipa
+
+  flutter-web:
+    name: Flutter Web
+    max_build_duration: 30
+    instance_type: mac_mini_m1
+    environment:
+      flutter: stable
+    scripts:
+      - name: Get Flutter packages
+        script: |
+          flutter pub get
+      - name: Build Web
+        script: |
+          flutter build web --release
+    artifacts:
+      - build/web/**
