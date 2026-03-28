@@ -16,13 +16,9 @@ workflows:
       - name: Install dependencies
         script: |
           set -e
+          flutter clean
           flutter pub get
           flutter precache --ios
-      - name: CocoaPods (clean + install)
-        script: |
-          set -e
-          rm -rf ios/Pods ios/.symlinks ios/Podfile.lock
-          cd ios && pod install --repo-update
       - name: Build iOS (no codesign)
         script: |
           set -e
