@@ -1,5 +1,5 @@
 workflows:
-  # iOS uniquement. Pour App Store / TestFlight : configurez ios_signing dans Codemagic + flutter build ipa.
+  # iOS uniquement – build avec xcodebuild pour éviter les conflits de pod install
   ios-release:
     name: iOS Release (no code signing)
     max_build_duration: 60
@@ -9,24 +9,29 @@ workflows:
       xcode: latest
       vars:
         LANG: en_US.UTF-8
-    cache:
-      cache_paths:
-        - ~/.pub-cache
     scripts:
-      - name: Install dependencies
+      - name: Install dependencies & pod install
         script: |
           set -e
           flutter clean
+          rm -rf ios/Pods ios/Podfile.lock ios/.symlinks
           flutter pub get
           flutter build ios --config-only --no-codesign
-      - name: CocoaPods (install)
+          cd ios && pod install --repo-update
+      - name: Build iOS (xcodebuild, no codesign)
         script: |
           set -e
-          cd ios
-          pod install --repo-update
-      - name: Build iOS (no codesign)
-        script: |
-          set -e
-          flutter build ios --release --no-codesign
+          xcodebuild build \
+            -workspace ios/Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGN_IDENTITY='' \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            COMPILER_INDEX_STORE_ENABLE=NO | tail -40
+          echo "Build succeeded"
     artifacts:
       - build/ios/**/*.app
+      - /tmp/xcodebuild_logs/**
