@@ -19,7 +19,8 @@ end
 require File.expand_path(File.join('..', 'Flutter', 'generated_podhelper.rb'), __FILE__)
 
 target 'Runner' do
-  use_frameworks! :linkage => :static
+  # Linkage dynamique : évite l’erreur « Module cloud_firestore not found » avec les static frameworks + @import
+  use_frameworks! :linkage => :dynamic
   use_modular_headers!
 
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
@@ -31,13 +32,5 @@ end
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
-    target.build_configurations.each do |config|
-      config.build_settings['CODE_SIGNING_ALLOWED'] = 'NO'
-      config.build_settings['CODE_SIGNING_REQUIRED'] = 'NO'
-      config.build_settings['EXPANDED_CODE_SIGN_IDENTITY'] = ""
-      config.build_settings['COMPILER_INDEX_STORE_ENABLE'] = 'NO'
-      config.build_settings['GCC_OPTIMIZATION_LEVEL'] = 's'
-      config.build_settings['SWIFT_OPTIMIZATION_LEVEL'] = '-O'
-    end
   end
 end

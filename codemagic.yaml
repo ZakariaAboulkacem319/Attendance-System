@@ -12,17 +12,17 @@ workflows:
     cache:
       cache_paths:
         - ~/.pub-cache
-        - ~/Library/Caches/CocoaPods
     scripts:
       - name: Install dependencies
         script: |
           set -e
           flutter pub get
           flutter precache --ios
-      - name: CocoaPods
+      - name: CocoaPods (clean + install)
         script: |
           set -e
-          cd ios && pod install
+          rm -rf ios/Pods ios/.symlinks ios/Podfile.lock
+          cd ios && pod install --repo-update
       - name: Build iOS (no codesign)
         script: |
           set -e
