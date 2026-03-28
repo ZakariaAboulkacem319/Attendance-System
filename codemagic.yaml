@@ -9,45 +9,43 @@ workflows:
       vars:
         LANG: en_US.UTF-8
     scripts:
-      - name: Flutter setup
+      - name: Flutter setup & debug
         script: |
           set -e
           flutter clean
           rm -rf ios/Pods ios/Podfile.lock ios/.symlinks
           flutter pub get
+
+          echo ""
+          echo "=== Hidden files in project root ==="
+          ls -la .flutter-plugins* 2>/dev/null || echo "No .flutter-plugins files"
+          echo ""
+
+          echo "=== .flutter-plugins-dependencies (first 5 lines) ==="
+          head -5 .flutter-plugins-dependencies 2>/dev/null || echo "Not found"
+          echo ""
+
           flutter build ios --config-only --no-codesign
 
-      - name: Debug plugin discovery
-        script: |
-          set -e
-          echo "=== .flutter-plugins ==="
-          cat .flutter-plugins
           echo ""
-          echo "=== .flutter-plugins-dependencies (first 20 lines) ==="
-          head -20 .flutter-plugins-dependencies || echo "Not found"
+          echo "=== After config-only: hidden files ==="
+          ls -la .flutter-plugins* 2>/dev/null || echo "No .flutter-plugins files"
           echo ""
           echo "=== ios/.symlinks/plugins/ ==="
-          ls -la ios/.symlinks/plugins/ 2>/dev/null || echo "No symlinks dir"
+          ls -la ios/.symlinks/plugins/ 2>/dev/null || echo "No symlinks"
           echo ""
-          echo "=== cloud_firestore podspec ==="
-          ls ios/.symlinks/plugins/cloud_firestore/ios/*.podspec 2>/dev/null || echo "No cloud_firestore podspec"
+          echo "=== cloud_firestore symlink content ==="
+          ls -la ios/.symlinks/plugins/cloud_firestore/ios/ 2>/dev/null || echo "No cloud_firestore ios dir"
           echo ""
-          echo "=== Podfile BEFORE fix ==="
+          echo "=== Podfile after Flutter migration ==="
           cat ios/Podfile
-          echo ""
-          echo "=== Generated.xcconfig (first 10 lines) ==="
-          head -10 ios/Flutter/Generated.xcconfig 2>/dev/null || echo "Not found"
 
       - name: Write Podfile & install pods
         script: |
           set -e
 
-          # Get FLUTTER_ROOT from Generated.xcconfig
-          FLUTTER_ROOT=$(grep 'FLUTTER_ROOT=' ios/Flutter/Generated.xcconfig | cut -d= -f2)
-          echo "FLUTTER_ROOT = $FLUTTER_ROOT"
-
-          # Overwrite Podfile completely with known-good content
-          cat > ios/Podfile << 'PODFILE_HEREDOC'
+          # Overwrite Podfile with known-good content
+          cat > ios/Podfile << 'EOF'
           platform :ios, '15.0'
 
           ENV['COCOAPODS_DISABLE_STATS'] = 'true'
@@ -92,29 +90,27 @@ workflows:
               end
             end
           end
-          PODFILE_HEREDOC
+          EOF
 
-          # Remove leading whitespace from heredoc (caused by indentation)
+          # Remove leading whitespace from heredoc
           sed -i '' 's/^          //' ios/Podfile
 
           echo "=== FINAL Podfile ==="
           cat ios/Podfile
           echo ""
 
-          # Clean and install
+          # Full pod install
           cd ios
           rm -rf Pods Podfile.lock
-          pod install --repo-update 2>&1 | tail -60
+          echo "Running pod install..."
+          pod install --repo-update 2>&1
 
           echo ""
-          echo "=== Podfile.lock (first 40 lines) ==="
-          head -40 Podfile.lock
+          echo "=== Podfile.lock (first 50 lines) ==="
+          head -50 Podfile.lock 2>/dev/null || echo "No Podfile.lock!"
           echo ""
-          echo "=== Pod targets ==="
-          ls Pods/Target\ Support\ Files/ 2>/dev/null | head -30
-          echo ""
-          echo "=== Pods project targets ==="
-          grep -c 'Target' Pods/Pods.xcodeproj/project.pbxproj 2>/dev/null || echo "No project file"
+          echo "=== Pod target directories ==="
+          ls Pods/Target\ Support\ Files/ 2>/dev/null | head -30 || echo "No pods installed!"
 
       - name: Build with xcodebuild (no codesign)
         script: |
