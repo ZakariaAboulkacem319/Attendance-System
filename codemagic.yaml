@@ -27,11 +27,22 @@ workflows:
             -configuration Release \
             -sdk iphoneos \
             -destination 'generic/platform=iOS' \
+            -derivedDataPath build/derivedData \
             CODE_SIGN_IDENTITY='' \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
-            COMPILER_INDEX_STORE_ENABLE=NO | tail -40
-          echo "Build succeeded"
+            COMPILER_INDEX_STORE_ENABLE=NO
+          echo "Xcode build succeeded"
+      - name: Package IPA (unsigned)
+        script: |
+          set -e
+          APP_PATH=$(find build/derivedData -name "Runner.app" -type d | head -1)
+          echo "Found .app at: $APP_PATH"
+          mkdir -p build/ipa/Payload
+          cp -R "$APP_PATH" build/ipa/Payload/
+          cd build/ipa
+          zip -r ../AttendanceSystem-unsigned.ipa Payload
+          echo "IPA created at build/AttendanceSystem-unsigned.ipa"
     artifacts:
-      - build/ios/**/*.app
-      - /tmp/xcodebuild_logs/**
+      - build/AttendanceSystem-unsigned.ipa
+      - build/derivedData/Build/Products/Release-iphoneos/*.app
