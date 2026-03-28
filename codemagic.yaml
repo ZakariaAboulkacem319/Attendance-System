@@ -9,43 +9,81 @@ workflows:
       vars:
         LANG: en_US.UTF-8
     scripts:
-      - name: Install dependencies
+      - name: Flutter setup & let migrations run
         script: |
           set -e
           flutter clean
           rm -rf ios/Pods ios/Podfile.lock ios/.symlinks
           flutter pub get
-      - name: Verify plugins & pod install
+          # Let Flutter run ALL its Podfile / UIScene migrations
+          flutter build ios --config-only --no-codesign
+          echo "=== Podfile AFTER Flutter migration ==="
+          cat ios/Podfile
+
+      - name: Patch Podfile & install pods
         script: |
           set -e
-          echo "=== Flutter plugins ==="
-          cat .flutter-plugins || echo "No .flutter-plugins"
-          echo ""
-          echo "=== Symlinks ==="
-          ls -la ios/.symlinks/plugins/ 2>/dev/null || echo "No symlinks yet"
-          echo ""
           cd ios
-          pod install --repo-update --verbose 2>&1 | tail -30
+
+          # ── Inject use_frameworks! if Flutter removed it ──
+          if ! grep -q 'use_frameworks!' Podfile; then
+            echo "Adding use_frameworks! :linkage => :static"
+            sed -i '' "/flutter_install_all_ios_pods/i\\
+            use_frameworks! :linkage => :static" Podfile
+          else
+            echo "use_frameworks! already present, forcing static linkage"
+            sed -i '' "s/use_frameworks!.*/use_frameworks! :linkage => :static/" Podfile
+          fi
+
+          # ── Ensure use_modular_headers! is present ──
+          if ! grep -q 'use_modular_headers!' Podfile; then
+            echo "Adding use_modular_headers!"
+            sed -i '' "/use_frameworks!/a\\
+            use_modular_headers!" Podfile
+          fi
+
           echo ""
-          echo "=== Podfile.lock summary ==="
-          head -40 Podfile.lock
+          echo "=== PATCHED Podfile ==="
+          cat Podfile
           echo ""
-          echo "=== Pods targets ==="
-          ls Pods/Target\ Support\ Files/ 2>/dev/null || echo "No target support files"
-      - name: Build iOS (no codesign)
+
+          # ── Clean + full pod install ──
+          rm -rf Pods Podfile.lock
+          pod install --repo-update
+
+          echo ""
+          echo "=== Podfile.lock (first 30 lines) ==="
+          head -30 Podfile.lock
+          echo ""
+          echo "=== Pod targets installed ==="
+          ls Pods/Target\ Support\ Files/ 2>/dev/null | head -20
+
+      - name: Build with xcodebuild (no codesign)
         script: |
           set -e
-          flutter build ios --release --no-codesign
+          xcodebuild build \
+            -workspace ios/Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build/derivedData \
+            CODE_SIGN_IDENTITY='' \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            COMPILER_INDEX_STORE_ENABLE=NO \
+            CLANG_ENABLE_EXPLICIT_MODULES=NO
+          echo "Build succeeded!"
+
       - name: Package unsigned IPA
         script: |
           set -e
-          APP_PATH=$(find build/ios -name "Runner.app" -type d | head -1)
+          APP_PATH=$(find build/derivedData -name "Runner.app" -type d | head -1)
           echo "Found .app at: $APP_PATH"
           mkdir -p build/ipa/Payload
           cp -R "$APP_PATH" build/ipa/Payload/
           cd build/ipa
           zip -r ../AttendanceSystem-unsigned.ipa Payload
-          echo "IPA created at build/AttendanceSystem-unsigned.ipa"
+          echo "IPA created successfully"
     artifacts:
       - build/AttendanceSystem-unsigned.ipa
-      - build/ios/iphoneos/*.app
