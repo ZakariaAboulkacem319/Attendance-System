@@ -19,14 +19,19 @@ class FirestoreService {
   // Mark attendance
   Future<void> markAttendance(String subject, String uid) async {
     try {
+      final now = FieldValue.serverTimestamp();
+
       await _db
           .collection('attendance')
           .doc(subject)
           .collection('students')
           .doc(uid)
-          .set({
-        'present': true,
-        'timestamp': FieldValue.serverTimestamp(),
+          .set({'present': true, 'subject': subject, 'timestamp': now});
+
+      await _db.collection('attendance_logs').add({
+        'uid': uid,
+        'subject': subject,
+        'timestamp': now,
       });
     } catch (e) {
       throw e.toString();
@@ -39,6 +44,26 @@ class FirestoreService {
         .collection('attendance')
         .doc(subject)
         .collection('students')
+        .orderBy('timestamp', descending: true)
+        .snapshots();
+  }
+
+  Stream<QuerySnapshot<Map<String, dynamic>>> getStudentAttendanceHistory(
+    String uid,
+  ) {
+    return _db
+        .collection('attendance_logs')
+        .where('uid', isEqualTo: uid)
+        .orderBy('timestamp', descending: true)
+        .snapshots();
+  }
+
+  Stream<QuerySnapshot<Map<String, dynamic>>> getSubjectAttendanceHistory(
+    String subject,
+  ) {
+    return _db
+        .collection('attendance_logs')
+        .where('subject', isEqualTo: subject)
         .orderBy('timestamp', descending: true)
         .snapshots();
   }
@@ -76,14 +101,11 @@ class FirestoreService {
         final lastName = data['lastName'] ?? '';
         final userClass = data['userClass'] ?? '';
         final email = data['email'] ?? '';
-        
+
         String name = '$firstName $lastName'.trim();
         if (name.isEmpty) name = email;
-        
-        return {
-          'name': name,
-          'class': userClass,
-        };
+
+        return {'name': name, 'class': userClass};
       }
     } catch (e) {
       // ignore

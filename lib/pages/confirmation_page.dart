@@ -9,14 +9,14 @@ class ConfirmationPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFFFF9F2),
       body: Container(
         width: double.infinity,
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Colors.greenAccent.withOpacity(0.05), Colors.white],
+            colors: [const Color(0xFFEEDFD3), const Color(0xFFFDF9F5)],
           ),
         ),
         child: Padding(
@@ -27,7 +27,7 @@ class ConfirmationPage extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(30),
                 decoration: BoxDecoration(
-                  color: Colors.greenAccent.withOpacity(0.1),
+                  color: Colors.greenAccent.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -56,17 +56,26 @@ class ConfirmationPage extends StatelessWidget {
               ),
               const SizedBox(height: 40),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 15,
+                ),
                 decoration: BoxDecoration(
-                  color: Colors.blueAccent.withOpacity(0.05),
+                  color: const Color(0xFFEF7F1A).withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.blueAccent.withOpacity(0.1)),
+                  border: Border.all(
+                    color: const Color(0xFFEF7F1A).withValues(alpha: 0.24),
+                  ),
                 ),
                 child: Column(
                   children: [
                     Text(
                       'Cours',
-                      style: GoogleFonts.poppins(fontSize: 12, color: Colors.blueAccent, fontWeight: FontWeight.bold),
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        color: const Color(0xFFEF7F1A),
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     Text(
                       subject,
@@ -83,13 +92,10 @@ class ConfirmationPage extends StatelessWidget {
               ElevatedButton(
                 onPressed: () => Navigator.pop(context),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blueAccent,
-                  foregroundColor: Colors.white,
                   minimumSize: const Size(double.infinity, 55),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(15),
                   ),
-                  elevation: 2,
                 ),
                 child: Text(
                   'Retour',

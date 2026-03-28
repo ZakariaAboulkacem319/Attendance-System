@@ -21,15 +21,15 @@ class _SignUpPageState extends State<SignUpPage> {
   final _classController = TextEditingController();
   final _authService = AuthService();
   final _firestoreService = FirestoreService();
-  
+
   String _selectedRole = 'student';
   bool _isLoading = false;
   bool _obscureText = true;
 
   Future<void> _signUp() async {
-    if (_emailController.text.isEmpty || 
-        _passwordController.text.isEmpty || 
-        _firstNameController.text.isEmpty || 
+    if (_emailController.text.isEmpty ||
+        _passwordController.text.isEmpty ||
+        _firstNameController.text.isEmpty ||
         _lastNameController.text.isEmpty ||
         (_selectedRole == 'student' && _classController.text.isEmpty)) {
       _showError('Veuillez remplir tous les champs');
@@ -56,11 +56,13 @@ class _SignUpPageState extends State<SignUpPage> {
           role: _selectedRole,
           firstName: _firstNameController.text.trim(),
           lastName: _lastNameController.text.trim(),
-          userClass: _selectedRole == 'student' ? _classController.text.trim() : null,
+          userClass: _selectedRole == 'student'
+              ? _classController.text.trim()
+              : null,
         );
 
         if (!mounted) return;
-        
+
         if (_selectedRole == 'student') {
           Navigator.pushAndRemoveUntil(
             context,
@@ -91,164 +93,201 @@ class _SignUpPageState extends State<SignUpPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.black87),
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 30),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Créer un compte',
-                style: GoogleFonts.poppins(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFFEF7F1A), Color(0xFFE5B37B)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              child: Card(
+                elevation: 12,
+                shadowColor: Colors.black38,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(24),
                 ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                'Rejoignez le système de présence dès aujourd\'hui.',
-                style: GoogleFonts.poppins(
-                  fontSize: 16,
-                  color: Colors.grey[600],
-                ),
-              ),
-              const SizedBox(height: 40),
-              
-              // Role Selection
-              Text(
-                'Je suis un...',
-                style: GoogleFonts.poppins(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 15),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildRoleCard(
-                      'Étudiant',
-                      Icons.school_outlined,
-                      _selectedRole == 'student',
-                      () => setState(() => _selectedRole = 'student'),
-                    ),
-                  ),
-                  const SizedBox(width: 15),
-                  Expanded(
-                    child: _buildRoleCard(
-                      'Professeur',
-                      Icons.psychology_outlined,
-                      _selectedRole == 'teacher',
-                      () => setState(() => _selectedRole = 'teacher'),
-                    ),
-                  ),
-                ],
-              ),
-              
-              const SizedBox(height: 30),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildTextField(
-                      controller: _firstNameController,
-                      label: 'Prénom',
-                      icon: Icons.person_outline,
-                    ),
-                  ),
-                  const SizedBox(width: 15),
-                  Expanded(
-                    child: _buildTextField(
-                      controller: _lastNameController,
-                      label: 'Nom',
-                      icon: Icons.person_outline,
-                    ),
-                  ),
-                ],
-              ),
-              if (_selectedRole == 'student') ...[
-                const SizedBox(height: 20),
-                _buildTextField(
-                  controller: _classController,
-                  label: 'Classe (ex: GI2)',
-                  icon: Icons.class_outlined,
-                ),
-              ],
-              const SizedBox(height: 20),
-              _buildTextField(
-                controller: _emailController,
-                label: 'Email',
-                icon: Icons.email_outlined,
-                keyboardType: TextInputType.emailAddress,
-              ),
-              const SizedBox(height: 20),
-              _buildTextField(
-                controller: _passwordController,
-                label: 'Mot de passe',
-                icon: Icons.lock_outline,
-                obscureText: _obscureText,
-                suffixIcon: IconButton(
-                  icon: Icon(_obscureText ? Icons.visibility_off : Icons.visibility),
-                  onPressed: () => setState(() => _obscureText = !_obscureText),
-                ),
-              ),
-              const SizedBox(height: 20),
-              _buildTextField(
-                controller: _confirmPasswordController,
-                label: 'Confirmer le mot de passe',
-                icon: Icons.lock_reset,
-                obscureText: _obscureText,
-              ),
-              
-              const SizedBox(height: 40),
-              _isLoading
-                  ? const Center(child: CircularProgressIndicator(color: Colors.blueAccent))
-                  : ElevatedButton(
-                      onPressed: _signUp,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blueAccent,
-                        foregroundColor: Colors.white,
-                        minimumSize: const Size(double.infinity, 55),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        elevation: 2,
-                      ),
-                      child: Text(
-                        'S\'inscrire',
+                color: Colors.white,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Créer un compte',
                         style: GoogleFonts.poppins(
-                          fontSize: 18,
+                          fontSize: 28,
                           fontWeight: FontWeight.bold,
+                          color: Colors.black87,
                         ),
                       ),
-                    ),
-              const SizedBox(height: 30),
-            ],
+                      const SizedBox(height: 8),
+                      Text(
+                        'Rejoignez le système de présence dès aujourd\'hui.',
+                        style: GoogleFonts.poppins(
+                          fontSize: 15,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+
+                      // Role Selection
+                      Text(
+                        'Je suis un...',
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildRoleCard(
+                              'Étudiant',
+                              Icons.school_outlined,
+                              _selectedRole == 'student',
+                              () => setState(() => _selectedRole = 'student'),
+                            ),
+                          ),
+                          const SizedBox(width: 15),
+                          Expanded(
+                            child: _buildRoleCard(
+                              'Professeur',
+                              Icons.psychology_outlined,
+                              _selectedRole == 'teacher',
+                              () => setState(() => _selectedRole = 'teacher'),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 30),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildTextField(
+                              controller: _firstNameController,
+                              label: 'Prénom',
+                              icon: Icons.person_outline,
+                            ),
+                          ),
+                          const SizedBox(width: 15),
+                          Expanded(
+                            child: _buildTextField(
+                              controller: _lastNameController,
+                              label: 'Nom',
+                              icon: Icons.person_outline,
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (_selectedRole == 'student') ...[
+                        const SizedBox(height: 20),
+                        _buildTextField(
+                          controller: _classController,
+                          label: 'Classe (ex: GI2)',
+                          icon: Icons.class_outlined,
+                        ),
+                      ],
+                      const SizedBox(height: 20),
+                      _buildTextField(
+                        controller: _emailController,
+                        label: 'Email',
+                        icon: Icons.email_outlined,
+                        keyboardType: TextInputType.emailAddress,
+                      ),
+                      const SizedBox(height: 20),
+                      _buildTextField(
+                        controller: _passwordController,
+                        label: 'Mot de passe',
+                        icon: Icons.lock_outline,
+                        obscureText: _obscureText,
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscureText ? Icons.visibility_off : Icons.visibility,
+                          ),
+                          onPressed: () => setState(() => _obscureText = !_obscureText),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      _buildTextField(
+                        controller: _confirmPasswordController,
+                        label: 'Confirmer le mot de passe',
+                        icon: Icons.lock_reset,
+                        obscureText: _obscureText,
+                      ),
+
+                      const SizedBox(height: 40),
+                      _isLoading
+                          ? const Center(
+                              child: CircularProgressIndicator(
+                                color: Color(0xFFEF7F1A),
+                              ),
+                            )
+                          : ElevatedButton(
+                              onPressed: _signUp,
+                              style: ElevatedButton.styleFrom(
+                                minimumSize: const Size(double.infinity, 55),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                elevation: 2,
+                              ),
+                              child: Text(
+                                'S\'inscrire',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                      const SizedBox(height: 10),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildRoleCard(String title, IconData icon, bool isSelected, VoidCallback onTap) {
+  Widget _buildRoleCard(
+    String title,
+    IconData icon,
+    bool isSelected,
+    VoidCallback onTap,
+  ) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 20),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.blueAccent.withOpacity(0.1) : Colors.grey[50],
+          color: isSelected
+              ? const Color(0xFFEF7F1A).withValues(alpha: 0.16)
+              : Colors.white,
           borderRadius: BorderRadius.circular(15),
           border: Border.all(
-            color: isSelected ? Colors.blueAccent : Colors.grey[300]!,
+            color: isSelected ? const Color(0xFFEF7F1A) : Colors.grey[300]!,
             width: 2,
           ),
         ),
@@ -257,7 +296,7 @@ class _SignUpPageState extends State<SignUpPage> {
             Icon(
               icon,
               size: 30,
-              color: isSelected ? Colors.blueAccent : Colors.grey[600],
+              color: isSelected ? const Color(0xFFEF7F1A) : Colors.grey[600],
             ),
             const SizedBox(height: 10),
             Text(
@@ -265,7 +304,7 @@ class _SignUpPageState extends State<SignUpPage> {
               style: GoogleFonts.poppins(
                 fontSize: 14,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                color: isSelected ? Colors.blueAccent : Colors.grey[600],
+                color: isSelected ? const Color(0xFFEF7F1A) : Colors.grey[600],
               ),
             ),
           ],
@@ -290,7 +329,7 @@ class _SignUpPageState extends State<SignUpPage> {
       decoration: InputDecoration(
         labelText: label,
         labelStyle: GoogleFonts.poppins(color: Colors.grey[600]),
-        prefixIcon: Icon(icon, color: Colors.blueAccent),
+        prefixIcon: Icon(icon, color: const Color(0xFFEF7F1A)),
         suffixIcon: suffixIcon,
         filled: true,
         fillColor: Colors.grey[50],
@@ -304,7 +343,7 @@ class _SignUpPageState extends State<SignUpPage> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(15),
-          borderSide: const BorderSide(color: Colors.blueAccent, width: 2),
+          borderSide: const BorderSide(color: Color(0xFFEF7F1A), width: 2),
         ),
       ),
     );
