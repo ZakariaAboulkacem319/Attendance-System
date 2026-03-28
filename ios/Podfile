@@ -19,8 +19,8 @@ end
 require File.expand_path(File.join('..', 'Flutter', 'generated_podhelper.rb'), __FILE__)
 
 target 'Runner' do
-  # Linkage dynamique : évite l’erreur « Module cloud_firestore not found » avec les static frameworks + @import
-  use_frameworks! :linkage => :dynamic
+  # Ensure static linkage for Firebase and cloud_firestore
+  use_frameworks! :linkage => :static
   use_modular_headers!
 
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
