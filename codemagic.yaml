@@ -1,42 +1,45 @@
 workflows:
-  # iOS uniquement – build avec xcodebuild pour éviter les conflits de pod install
   ios-release:
     name: iOS Release (no code signing)
     max_build_duration: 60
     instance_type: mac_mini_m2
     environment:
       flutter: stable
-      xcode: latest
+      xcode: 16.2
       vars:
         LANG: en_US.UTF-8
     scripts:
-      - name: Install dependencies & pod install
+      - name: Install dependencies
         script: |
           set -e
           flutter clean
           rm -rf ios/Pods ios/Podfile.lock ios/.symlinks
           flutter pub get
-          flutter build ios --config-only --no-codesign
-          cd ios && pod install --repo-update
-      - name: Build iOS (xcodebuild, no codesign)
+      - name: Verify plugins & pod install
         script: |
           set -e
-          xcodebuild build \
-            -workspace ios/Runner.xcworkspace \
-            -scheme Runner \
-            -configuration Release \
-            -sdk iphoneos \
-            -destination 'generic/platform=iOS' \
-            -derivedDataPath build/derivedData \
-            CODE_SIGN_IDENTITY='' \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO \
-            COMPILER_INDEX_STORE_ENABLE=NO
-          echo "Xcode build succeeded"
-      - name: Package IPA (unsigned)
+          echo "=== Flutter plugins ==="
+          cat .flutter-plugins || echo "No .flutter-plugins"
+          echo ""
+          echo "=== Symlinks ==="
+          ls -la ios/.symlinks/plugins/ 2>/dev/null || echo "No symlinks yet"
+          echo ""
+          cd ios
+          pod install --repo-update --verbose 2>&1 | tail -30
+          echo ""
+          echo "=== Podfile.lock summary ==="
+          head -40 Podfile.lock
+          echo ""
+          echo "=== Pods targets ==="
+          ls Pods/Target\ Support\ Files/ 2>/dev/null || echo "No target support files"
+      - name: Build iOS (no codesign)
         script: |
           set -e
-          APP_PATH=$(find build/derivedData -name "Runner.app" -type d | head -1)
+          flutter build ios --release --no-codesign
+      - name: Package unsigned IPA
+        script: |
+          set -e
+          APP_PATH=$(find build/ios -name "Runner.app" -type d | head -1)
           echo "Found .app at: $APP_PATH"
           mkdir -p build/ipa/Payload
           cp -R "$APP_PATH" build/ipa/Payload/
@@ -45,4 +48,4 @@ workflows:
           echo "IPA created at build/AttendanceSystem-unsigned.ipa"
     artifacts:
       - build/AttendanceSystem-unsigned.ipa
-      - build/derivedData/Build/Products/Release-iphoneos/*.app
+      - build/ios/iphoneos/*.app
