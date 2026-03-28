@@ -3,20 +3,33 @@ import 'package:google_fonts/google_fonts.dart';
 
 class ConfirmationPage extends StatelessWidget {
   final String subject;
+  final String? sessionStart;
+  final String? sessionEnd;
 
-  const ConfirmationPage({super.key, required this.subject});
+  const ConfirmationPage({
+    super.key,
+    required this.subject,
+    this.sessionStart,
+    this.sessionEnd,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final hasSession =
+        sessionStart != null &&
+        sessionEnd != null &&
+        sessionStart!.isNotEmpty &&
+        sessionEnd!.isNotEmpty;
+
     return Scaffold(
       backgroundColor: const Color(0xFFFFF9F2),
       body: Container(
         width: double.infinity,
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [const Color(0xFFEEDFD3), const Color(0xFFFDF9F5)],
+            colors: [Color(0xFFEEDFD3), Color(0xFFFDF9F5)],
           ),
         ),
         child: Padding(
@@ -85,6 +98,38 @@ class ConfirmationPage extends StatelessWidget {
                         color: Colors.black87,
                       ),
                     ),
+                    if (hasSession) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.access_time_rounded,
+                              size: 16,
+                              color: Color(0xFFEF7F1A),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              '$sessionStart — $sessionEnd',
+                              style: GoogleFonts.poppins(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black87,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
