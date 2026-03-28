@@ -1,7 +1,6 @@
 #include "Generated.xcconfig"
 #include "../Pods/Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"
 
-CLANG_ENABLE_EXPLICIT_MODULES = NO
 CODE_SIGNING_ALLOWED = NO
 CODE_SIGNING_REQUIRED = NO
 CODE_SIGN_IDENTITY = ""
