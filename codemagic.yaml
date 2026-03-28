@@ -9,54 +9,112 @@ workflows:
       vars:
         LANG: en_US.UTF-8
     scripts:
-      - name: Flutter setup & let migrations run
+      - name: Flutter setup
         script: |
           set -e
           flutter clean
           rm -rf ios/Pods ios/Podfile.lock ios/.symlinks
           flutter pub get
-          # Let Flutter run ALL its Podfile / UIScene migrations
           flutter build ios --config-only --no-codesign
-          echo "=== Podfile AFTER Flutter migration ==="
-          cat ios/Podfile
 
-      - name: Patch Podfile & install pods
+      - name: Debug plugin discovery
         script: |
           set -e
+          echo "=== .flutter-plugins ==="
+          cat .flutter-plugins
+          echo ""
+          echo "=== .flutter-plugins-dependencies (first 20 lines) ==="
+          head -20 .flutter-plugins-dependencies || echo "Not found"
+          echo ""
+          echo "=== ios/.symlinks/plugins/ ==="
+          ls -la ios/.symlinks/plugins/ 2>/dev/null || echo "No symlinks dir"
+          echo ""
+          echo "=== cloud_firestore podspec ==="
+          ls ios/.symlinks/plugins/cloud_firestore/ios/*.podspec 2>/dev/null || echo "No cloud_firestore podspec"
+          echo ""
+          echo "=== Podfile BEFORE fix ==="
+          cat ios/Podfile
+          echo ""
+          echo "=== Generated.xcconfig (first 10 lines) ==="
+          head -10 ios/Flutter/Generated.xcconfig 2>/dev/null || echo "Not found"
+
+      - name: Write Podfile & install pods
+        script: |
+          set -e
+
+          # Get FLUTTER_ROOT from Generated.xcconfig
+          FLUTTER_ROOT=$(grep 'FLUTTER_ROOT=' ios/Flutter/Generated.xcconfig | cut -d= -f2)
+          echo "FLUTTER_ROOT = $FLUTTER_ROOT"
+
+          # Overwrite Podfile completely with known-good content
+          cat > ios/Podfile << 'PODFILE_HEREDOC'
+          platform :ios, '15.0'
+
+          ENV['COCOAPODS_DISABLE_STATS'] = 'true'
+
+          project 'Runner', {
+            'Debug' => :debug,
+            'Profile' => :release,
+            'Release' => :release,
+          }
+
+          def flutter_root
+            generated_xcode_build_settings_path = File.expand_path(File.join('..', 'Flutter', 'Generated.xcconfig'), __FILE__)
+            unless File.exist?(generated_xcode_build_settings_path)
+              raise "#{generated_xcode_build_settings_path} must exist. If you're running pod install manually, make sure flutter pub get is executed first"
+            end
+            File.foreach(generated_xcode_build_settings_path) do |line|
+              matches = line.match(/\AFLUTTER_ROOT=(.*)\n?\z/)
+              return matches[1].strip if matches
+            end
+            raise "FLUTTER_ROOT not found in #{generated_xcode_build_settings_path}. Try deleting Generated.xcconfig, then run flutter pub get"
+          end
+
+          require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root)
+
+          target 'Runner' do
+            use_frameworks! :linkage => :static
+            use_modular_headers!
+
+            flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
+
+            target 'RunnerTests' do
+              inherit! :search_paths
+            end
+          end
+
+          post_install do |installer|
+            installer.pods_project.targets.each do |target|
+              flutter_additional_ios_build_settings(target)
+              target.build_configurations.each do |config|
+                config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
+                config.build_settings['CLANG_ENABLE_EXPLICIT_MODULES'] = 'NO'
+              end
+            end
+          end
+          PODFILE_HEREDOC
+
+          # Remove leading whitespace from heredoc (caused by indentation)
+          sed -i '' 's/^          //' ios/Podfile
+
+          echo "=== FINAL Podfile ==="
+          cat ios/Podfile
+          echo ""
+
+          # Clean and install
           cd ios
-
-          # ── Inject use_frameworks! if Flutter removed it ──
-          if ! grep -q 'use_frameworks!' Podfile; then
-            echo "Adding use_frameworks! :linkage => :static"
-            sed -i '' "/flutter_install_all_ios_pods/i\\
-            use_frameworks! :linkage => :static" Podfile
-          else
-            echo "use_frameworks! already present, forcing static linkage"
-            sed -i '' "s/use_frameworks!.*/use_frameworks! :linkage => :static/" Podfile
-          fi
-
-          # ── Ensure use_modular_headers! is present ──
-          if ! grep -q 'use_modular_headers!' Podfile; then
-            echo "Adding use_modular_headers!"
-            sed -i '' "/use_frameworks!/a\\
-            use_modular_headers!" Podfile
-          fi
-
-          echo ""
-          echo "=== PATCHED Podfile ==="
-          cat Podfile
-          echo ""
-
-          # ── Clean + full pod install ──
           rm -rf Pods Podfile.lock
-          pod install --repo-update
+          pod install --repo-update 2>&1 | tail -60
 
           echo ""
-          echo "=== Podfile.lock (first 30 lines) ==="
-          head -30 Podfile.lock
+          echo "=== Podfile.lock (first 40 lines) ==="
+          head -40 Podfile.lock
           echo ""
-          echo "=== Pod targets installed ==="
-          ls Pods/Target\ Support\ Files/ 2>/dev/null | head -20
+          echo "=== Pod targets ==="
+          ls Pods/Target\ Support\ Files/ 2>/dev/null | head -30
+          echo ""
+          echo "=== Pods project targets ==="
+          grep -c 'Target' Pods/Pods.xcodeproj/project.pbxproj 2>/dev/null || echo "No project file"
 
       - name: Build with xcodebuild (no codesign)
         script: |
