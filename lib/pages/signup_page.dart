@@ -22,7 +22,7 @@ class _SignUpPageState extends State<SignUpPage> {
   final _authService = AuthService();
   final _firestoreService = FirestoreService();
 
-  String _selectedRole = 'student';
+  final String _selectedRole = 'student';
   bool _isLoading = false;
   bool _obscureText = true;
 
@@ -146,39 +146,7 @@ class _SignUpPageState extends State<SignUpPage> {
                       ),
                       const SizedBox(height: 32),
 
-                      // Role Selection
-                      Text(
-                        'Je suis un...',
-                        style: GoogleFonts.poppins(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildRoleCard(
-                              'Étudiant',
-                              Icons.school_outlined,
-                              _selectedRole == 'student',
-                              () => setState(() => _selectedRole = 'student'),
-                            ),
-                          ),
-                          const SizedBox(width: 15),
-                          Expanded(
-                            child: _buildRoleCard(
-                              'Professeur',
-                              Icons.psychology_outlined,
-                              _selectedRole == 'teacher',
-                              () => setState(() => _selectedRole = 'teacher'),
-                            ),
-                          ),
-                        ],
-                      ),
 
-                      const SizedBox(height: 30),
                       Row(
                         children: [
                           Expanded(
@@ -198,14 +166,12 @@ class _SignUpPageState extends State<SignUpPage> {
                           ),
                         ],
                       ),
-                      if (_selectedRole == 'student') ...[
-                        const SizedBox(height: 20),
-                        _buildTextField(
-                          controller: _classController,
-                          label: 'Classe (ex: GI2)',
-                          icon: Icons.class_outlined,
-                        ),
-                      ],
+                      const SizedBox(height: 20),
+                      _buildTextField(
+                        controller: _classController,
+                        label: 'Classe (ex: GI2)',
+                        icon: Icons.class_outlined,
+                      ),
                       const SizedBox(height: 20),
                       _buildTextField(
                         controller: _emailController,

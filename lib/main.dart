@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -94,7 +95,7 @@ class AttendanceApp extends StatelessWidget {
             elevation: 0,
             backgroundColor: _secondary,
             foregroundColor: _onPrimary,
-            minimumSize: const Size(double.infinity, 54),
+            minimumSize: const Size(0, 54),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(14),
             ),
@@ -139,6 +140,7 @@ class AuthWrapper extends StatefulWidget {
 class _AuthWrapperState extends State<AuthWrapper> {
   final AuthService _authService = AuthService();
   final FirestoreService _firestoreService = FirestoreService();
+  late StreamSubscription<User?> _authSubscription;
 
   User? _user;
   String? _role;
@@ -147,7 +149,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
   @override
   void initState() {
     super.initState();
-    _authService.authStateChanges.listen((user) async {
+    _authSubscription = _authService.authStateChanges.listen((user) async {
       if (!mounted) return;
       if (user != null) {
         setState(() {
@@ -172,6 +174,12 @@ class _AuthWrapperState extends State<AuthWrapper> {
   }
 
   @override
+  void dispose() {
+    _authSubscription.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     if (_isLoading) {
       return const Scaffold(
@@ -180,17 +188,17 @@ class _AuthWrapperState extends State<AuthWrapper> {
     }
 
     if (_user == null) {
-      return const WelcomePage();
+      return const WelcomePage(key: ValueKey('welcome_page'));
     }
 
     if (_role == 'student') {
-      return const StudentPage();
+      return const StudentPage(key: ValueKey('student_page'));
     } else if (_role == 'teacher') {
-      return const TeacherPage();
+      return const TeacherPage(key: ValueKey('teacher_page'));
     } else if (_role == 'admin') {
-      return const AdminPage();
+      return const AdminPage(key: ValueKey('admin_page'));
     } else {
-      return const RoleSelectionPage();
+      return const RoleSelectionPage(key: ValueKey('role_selection_page'));
     }
   }
 }

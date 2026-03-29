@@ -4,6 +4,7 @@ import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import 'student_page.dart';
 import 'teacher_page.dart';
+import 'login_page.dart';
 
 class RoleSelectionPage extends StatefulWidget {
   const RoleSelectionPage({super.key});
@@ -18,7 +19,7 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
   final _classController = TextEditingController();
-  String _selectedRole = 'student';
+  final String _selectedRole = 'student';
   bool _isLoading = false;
 
   Future<void> _completeProfile() async {
@@ -76,16 +77,44 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
   }
 
   @override
+  void dispose() {
+    _firstNameController.dispose();
+    _lastNameController.dispose();
+    _classController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+          onPressed: () async {
+            await _authService.signOut();
+            if (mounted) {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => const WelcomePage()),
+              );
+            }
+          },
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.white),
-            onPressed: () => _authService.signOut(),
+            onPressed: () async {
+              await _authService.signOut();
+              if (mounted) {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (_) => const WelcomePage()),
+                );
+              }
+            },
           ),
         ],
       ),
@@ -116,7 +145,7 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Une dernière étape',
+                        'Profil',
                         style: GoogleFonts.poppins(
                           fontSize: 28,
                           fontWeight: FontWeight.bold,
@@ -125,7 +154,7 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Veuillez choisir votre rôle et compléter vos informations.',
+                        'Veuillez compléter vos informations.',
                         style: GoogleFonts.poppins(
                           fontSize: 15,
                           color: Colors.grey[600],
@@ -151,35 +180,11 @@ class _RoleSelectionPageState extends State<RoleSelectionPage> {
                           ),
                         ],
                       ),
-                      if (_selectedRole == 'student') ...[
-                        const SizedBox(height: 20),
-                        _buildTextField(
-                          _classController,
-                          'Classe (ex: GI2)',
-                          Icons.class_outlined,
-                        ),
-                      ],
-                      const SizedBox(height: 30),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildRoleCard(
-                              'Étudiant',
-                              Icons.school_outlined,
-                              _selectedRole == 'student',
-                              () => setState(() => _selectedRole = 'student'),
-                            ),
-                          ),
-                          const SizedBox(width: 15),
-                          Expanded(
-                            child: _buildRoleCard(
-                              'Professeur',
-                              Icons.psychology_outlined,
-                              _selectedRole == 'teacher',
-                              () => setState(() => _selectedRole = 'teacher'),
-                            ),
-                          ),
-                        ],
+                      const SizedBox(height: 20),
+                      _buildTextField(
+                        _classController,
+                        'Classe (ex: GI2)',
+                        Icons.class_outlined,
                       ),
                       const SizedBox(height: 40),
                       _isLoading
