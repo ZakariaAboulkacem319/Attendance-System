@@ -173,11 +173,15 @@ class FirestoreService {
         String name = '$firstName $lastName'.trim();
         if (name.isEmpty) name = email;
 
-        return {'name': name, 'class': userClass};
+        return {
+          'name': name,
+          'class': userClass,
+          'assignedSubject': data['assignedSubject'] ?? '',
+        };
       }
     } catch (e) {
       // ignore
     }
-    return {'name': 'Inconnu', 'class': ''};
+    return {'name': 'Inconnu', 'class': '', 'assignedSubject': ''};
   }
 }

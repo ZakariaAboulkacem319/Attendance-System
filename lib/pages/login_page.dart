@@ -7,6 +7,7 @@ import 'student_page.dart';
 import 'teacher_page.dart';
 import 'signup_page.dart';
 import 'role_selection_page.dart';
+import 'admin_page.dart';
 
 class WelcomePage extends StatefulWidget {
   const WelcomePage({super.key});
@@ -77,6 +78,11 @@ class _WelcomePageState extends State<WelcomePage> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const TeacherPage()),
+        );
+      } else if (role == 'admin') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const AdminPage()),
         );
       }
     } else {

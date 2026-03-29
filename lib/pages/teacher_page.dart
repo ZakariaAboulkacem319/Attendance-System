@@ -18,29 +18,39 @@ class _TeacherPageState extends State<TeacherPage> {
   final AuthService _authService = AuthService();
   final FirestoreService _firestoreService = FirestoreService();
 
-  final List<String> _subjects = [
-    'Algorithmique',
-    'Développement Web',
-    'Base de Données',
-    'Réseaux & Sécurité',
-    'Intelligence Artificielle',
-    'Systèmes d\'Exploitation',
-  ];
-  String _selectedSubject = 'Algorithmique';
-
-  TimeOfDay _startTime = TimeOfDay.now();
-  TimeOfDay _endTime = TimeOfDay(
-    hour: (TimeOfDay.now().hour + 1) % 24,
-    minute: TimeOfDay.now().minute,
-  );
+  // "Matin (08:30 à 12:30)" -> [08:30, 12:30]
+  // "Après-midi (14:30 à 17:30)" -> [14:30, 17:30]
+  final Map<String, List<String>> _predefinedSessions = {
+    'Matin (08:30 à 12:30)': ['08:30', '12:30'],
+    'Après-midi (14:30 à 17:30)': ['14:30', '17:30'],
+  };
+  
+  String _selectedSessionLabel = 'Matin (08:30 à 12:30)';
   bool _sessionActive = false;
+  String _assignedSubject = '';
 
-  String _formatTime(TimeOfDay time) {
-    return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+  @override
+  void initState() {
+    super.initState();
+    _loadTeacherData();
   }
 
-  String get _qrData =>
-      '$_selectedSubject|${_formatTime(_startTime)}|${_formatTime(_endTime)}';
+  Future<void> _loadTeacherData() async {
+    final uid = _authService.currentUser?.uid;
+    if (uid != null) {
+      final info = await _firestoreService.getUserInfo(uid);
+      if (mounted) {
+        setState(() {
+          _assignedSubject = info['assignedSubject'] ?? 'Matière Non Assignée';
+        });
+      }
+    }
+  }
+
+  String get _qrData {
+    final times = _predefinedSessions[_selectedSessionLabel]!;
+    return '$_assignedSubject|${times[0]}|${times[1]}';
+  }
 
   void _logout() async {
     await _authService.signOut();
@@ -51,51 +61,16 @@ class _TeacherPageState extends State<TeacherPage> {
     );
   }
 
-  Future<void> _pickStartTime() async {
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: _startTime,
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            timePickerTheme: TimePickerThemeData(
-              backgroundColor: Colors.white,
-              dialHandColor: const Color(0xFFEF7F1A),
-              hourMinuteColor: const Color(0xFFEF7F1A).withValues(alpha: 0.12),
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-    if (picked != null && mounted) {
-      setState(() => _startTime = picked);
-    }
-  }
-
-  Future<void> _pickEndTime() async {
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: _endTime,
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            timePickerTheme: TimePickerThemeData(
-              backgroundColor: Colors.white,
-              dialHandColor: const Color(0xFFEF7F1A),
-              hourMinuteColor: const Color(0xFFEF7F1A).withValues(alpha: 0.12),
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-    if (picked != null && mounted) {
-      setState(() => _endTime = picked);
-    }
-  }
-
   void _toggleSession() {
+    if (_assignedSubject.isEmpty || _assignedSubject == 'Matière Non Assignée') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Impossible de démarrer, aucune matière assignée."),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
     setState(() => _sessionActive = !_sessionActive);
   }
 
@@ -112,13 +87,14 @@ class _TeacherPageState extends State<TeacherPage> {
           IconButton(
             icon: const Icon(Icons.history_rounded, color: Color(0xFFEF7F1A)),
             onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) =>
-                      TeacherHistoryPage(subject: _selectedSubject),
-                ),
-              );
+              if (_assignedSubject.isNotEmpty) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => TeacherHistoryPage(subject: _assignedSubject),
+                  ),
+                );
+              }
             },
           ),
           IconButton(
@@ -133,6 +109,11 @@ class _TeacherPageState extends State<TeacherPage> {
         ),
         builder: (context, nameSnapshot) {
           final teacherName = nameSnapshot.data?['name'] ?? 'Professeur';
+          final loadedSubject = nameSnapshot.data?['assignedSubject'] ?? '';
+          if (loadedSubject.isNotEmpty && _assignedSubject == '') {
+            // Synchronize state if needed initially
+            _assignedSubject = loadedSubject;
+          }
 
           return SingleChildScrollView(
             child: Padding(
@@ -204,9 +185,44 @@ class _TeacherPageState extends State<TeacherPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Subject Selector
+                        // Locked Subject Display
                         Text(
-                          'Matière',
+                          'Matière enseignée',
+                          style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[100],
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.grey[300]!),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.menu_book_rounded, color: Colors.grey, size: 20),
+                              const SizedBox(width: 10),
+                              Text(
+                                _assignedSubject.isEmpty ? 'Chargement...' : _assignedSubject,
+                                style: GoogleFonts.poppins(
+                                  color: Colors.black87,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        
+                        const SizedBox(height: 24),
+
+                        // Predefined Sessions Dropdown
+                        Text(
+                          'Créneau de la séance',
                           style: GoogleFonts.poppins(
                             fontWeight: FontWeight.w600,
                             color: Colors.grey[700],
@@ -214,9 +230,8 @@ class _TeacherPageState extends State<TeacherPage> {
                         ),
                         const SizedBox(height: 10),
                         DropdownButtonFormField<String>(
-                          value: _selectedSubject,
-                          icon:
-                              const Icon(Icons.keyboard_arrow_down_rounded),
+                          value: _selectedSessionLabel,
+                          icon: const Icon(Icons.access_time_filled_rounded),
                           decoration: InputDecoration(
                             filled: true,
                             fillColor: const Color(0xFFFCF7F1),
@@ -227,58 +242,25 @@ class _TeacherPageState extends State<TeacherPage> {
                           ),
                           style: GoogleFonts.poppins(
                             color: Colors.black87,
-                            fontSize: 16,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
                           ),
-                          items: _subjects.map((String subject) {
+                          items: _predefinedSessions.keys.map((String sessionLabel) {
                             return DropdownMenuItem<String>(
-                              value: subject,
-                              child: Text(subject),
+                              value: sessionLabel,
+                              child: Text(sessionLabel),
                             );
                           }).toList(),
                           onChanged: _sessionActive
                               ? null
                               : (String? newValue) {
                                   if (newValue != null) {
-                                    setState(
-                                        () => _selectedSubject = newValue);
+                                    setState(() => _selectedSessionLabel = newValue);
                                   }
                                 },
                         ),
 
-                        const SizedBox(height: 24),
-
-                        // Time Pickers
-                        Text(
-                          'Horaires de la séance',
-                          style: GoogleFonts.poppins(
-                            fontWeight: FontWeight.w600,
-                            color: Colors.grey[700],
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildTimePicker(
-                                label: 'Début',
-                                time: _startTime,
-                                icon: Icons.play_circle_outline_rounded,
-                                onTap: _sessionActive ? null : _pickStartTime,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: _buildTimePicker(
-                                label: 'Fin',
-                                time: _endTime,
-                                icon: Icons.stop_circle_outlined,
-                                onTap: _sessionActive ? null : _pickEndTime,
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 30),
 
                         // Start/Stop Session Button
                         SizedBox(
@@ -363,7 +345,7 @@ class _TeacherPageState extends State<TeacherPage> {
                                     ),
                                     const SizedBox(width: 6),
                                     Text(
-                                      'Séance en cours',
+                                      'Séance en direct',
                                       style: GoogleFonts.poppins(
                                         fontSize: 12,
                                         color: Colors.green[800],
@@ -375,23 +357,23 @@ class _TeacherPageState extends State<TeacherPage> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 12),
                           Text(
-                            '$_selectedSubject',
+                            _assignedSubject,
                             style: GoogleFonts.poppins(
                               fontWeight: FontWeight.bold,
-                              fontSize: 16,
+                              fontSize: 18,
                               color: Colors.black87,
                             ),
                           ),
                           Text(
-                            '${_formatTime(_startTime)} — ${_formatTime(_endTime)}',
+                            _selectedSessionLabel,
                             style: GoogleFonts.poppins(
-                              fontSize: 13,
+                              fontSize: 14,
                               color: Colors.grey[600],
                             ),
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 20),
                           Container(
                             padding: const EdgeInsets.all(15),
                             decoration: BoxDecoration(
@@ -440,7 +422,7 @@ class _TeacherPageState extends State<TeacherPage> {
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
-                            'En direct',
+                            'En temps réel',
                             style: GoogleFonts.poppins(
                               fontSize: 12,
                               color: Colors.green[800],
@@ -454,20 +436,16 @@ class _TeacherPageState extends State<TeacherPage> {
 
                     // Students Stream
                     StreamBuilder<QuerySnapshot>(
-                      stream:
-                          _firestoreService.getAttendedStudentsStream(
-                        _selectedSubject,
-                        sessionStart: _formatTime(_startTime),
-                        sessionEnd: _formatTime(_endTime),
+                      stream: _firestoreService.getAttendedStudentsStream(
+                        _assignedSubject,
+                        sessionStart: _predefinedSessions[_selectedSessionLabel]![0],
+                        sessionEnd: _predefinedSessions[_selectedSessionLabel]![1],
                       ),
                       builder: (context, snapshot) {
-                        if (snapshot.connectionState ==
-                            ConnectionState.waiting) {
-                          return const Center(
-                              child: CircularProgressIndicator());
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const Center(child: CircularProgressIndicator());
                         }
-                        if (!snapshot.hasData ||
-                            snapshot.data!.docs.isEmpty) {
+                        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                           return Container(
                             width: double.infinity,
                             padding: const EdgeInsets.all(30),
@@ -485,7 +463,7 @@ class _TeacherPageState extends State<TeacherPage> {
                                   ),
                                   const SizedBox(height: 12),
                                   Text(
-                                    'En attente des étudiants...',
+                                    'En l\'attente des étudiants...',
                                     style: GoogleFonts.poppins(
                                       color: Colors.grey[500],
                                     ),
@@ -504,40 +482,29 @@ class _TeacherPageState extends State<TeacherPage> {
                           itemBuilder: (context, index) {
                             final doc = docs[index];
                             final uid = doc.id;
-                            final timestamp =
-                                (doc['timestamp'] as Timestamp?)
-                                    ?.toDate();
+                            final timestamp = (doc['timestamp'] as Timestamp?)?.toDate();
 
                             return FutureBuilder<Map<String, String>>(
-                              future:
-                                  _firestoreService.getUserInfo(uid),
+                              future: _firestoreService.getUserInfo(uid),
                               builder: (context, infoSnapshot) {
                                 final info = infoSnapshot.data ??
-                                    {
-                                      'name': 'Chargement...',
-                                      'class': ''
-                                    };
+                                    {'name': 'Chargement...', 'class': ''};
                                 return Container(
-                                  margin:
-                                      const EdgeInsets.only(bottom: 12),
+                                  margin: const EdgeInsets.only(bottom: 12),
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
                                     color: Colors.white,
-                                    borderRadius:
-                                        BorderRadius.circular(15),
+                                    borderRadius: BorderRadius.circular(15),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.black
-                                            .withValues(alpha: 0.02),
+                                        color: Colors.black.withValues(alpha: 0.02),
                                         blurRadius: 10,
                                       ),
                                     ],
                                   ),
                                   child: ListTile(
                                     leading: CircleAvatar(
-                                      backgroundColor: const Color(
-                                        0xFFEF7F1A,
-                                      ).withValues(alpha: 0.12),
+                                      backgroundColor: const Color(0xFFEF7F1A).withValues(alpha: 0.12),
                                       child: const Icon(
                                         Icons.person_outline,
                                         color: Color(0xFFEF7F1A),
@@ -551,16 +518,14 @@ class _TeacherPageState extends State<TeacherPage> {
                                       ),
                                     ),
                                     subtitle: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
+                                      crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         if (info['class']!.isNotEmpty)
                                           Text(
                                             info['class']!,
                                             style: GoogleFonts.poppins(
                                               fontSize: 12,
-                                              color: const Color(
-                                                  0xFFEF7F1A),
+                                              color: const Color(0xFFEF7F1A),
                                               fontWeight: FontWeight.w500,
                                             ),
                                           ),
@@ -593,52 +558,6 @@ class _TeacherPageState extends State<TeacherPage> {
             ),
           );
         },
-      ),
-    );
-  }
-
-  Widget _buildTimePicker({
-    required String label,
-    required TimeOfDay time,
-    required IconData icon,
-    VoidCallback? onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFCF7F1),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.grey[200]!),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, color: const Color(0xFFEF7F1A), size: 22),
-            const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: GoogleFonts.poppins(
-                    fontSize: 11,
-                    color: Colors.grey[600],
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                Text(
-                  _formatTime(time),
-                  style: GoogleFonts.poppins(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
       ),
     );
   }

@@ -7,6 +7,7 @@ import 'services/firestore_service.dart';
 import 'pages/login_page.dart';
 import 'pages/student_page.dart';
 import 'pages/teacher_page.dart';
+import 'pages/admin_page.dart';
 import 'pages/role_selection_page.dart';
 
 import 'firebase_options.dart';
@@ -128,57 +129,68 @@ class AttendanceApp extends StatelessWidget {
   }
 }
 
-class AuthWrapper extends StatelessWidget {
+class AuthWrapper extends StatefulWidget {
   const AuthWrapper({super.key});
 
   @override
+  State<AuthWrapper> createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends State<AuthWrapper> {
+  final AuthService _authService = AuthService();
+  final FirestoreService _firestoreService = FirestoreService();
+
+  User? _user;
+  String? _role;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _authService.authStateChanges.listen((user) async {
+      if (!mounted) return;
+      if (user != null) {
+        setState(() {
+          _user = user;
+          _isLoading = true;
+        });
+        final role = await _firestoreService.getUserRole(user.uid);
+        if (mounted) {
+          setState(() {
+            _role = role;
+            _isLoading = false;
+          });
+        }
+      } else {
+        setState(() {
+          _user = null;
+          _role = null;
+          _isLoading = false;
+        });
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final AuthService authService = AuthService();
-    final FirestoreService firestoreService = FirestoreService();
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator(color: Color(0xFFEF7F1A))),
+      );
+    }
 
-    return StreamBuilder<User?>(
-      stream: authService.authStateChanges,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
+    if (_user == null) {
+      return const WelcomePage();
+    }
 
-        if (snapshot.hasData && snapshot.data != null) {
-          // User is logged in, determine their role
-          return FutureBuilder<String?>(
-            future: firestoreService.getUserRole(snapshot.data!.uid),
-            builder: (context, roleSnapshot) {
-              if (roleSnapshot.connectionState == ConnectionState.waiting) {
-                return const Scaffold(
-                  body: Center(child: CircularProgressIndicator()),
-                );
-              }
-
-              if (roleSnapshot.hasError ||
-                  !roleSnapshot.hasData ||
-                  roleSnapshot.data == null) {
-                return const RoleSelectionPage();
-              }
-
-              final role = roleSnapshot.data;
-              if (role == 'student') {
-                return const StudentPage();
-              } else if (role == 'teacher') {
-                return const TeacherPage();
-              } else {
-                return const Scaffold(
-                  body: Center(child: Text('Unknown role')),
-                );
-              }
-            },
-          );
-        }
-
-        // User is not logged in
-        return const WelcomePage();
-      },
-    );
+    if (_role == 'student') {
+      return const StudentPage();
+    } else if (_role == 'teacher') {
+      return const TeacherPage();
+    } else if (_role == 'admin') {
+      return const AdminPage();
+    } else {
+      return const RoleSelectionPage();
+    }
   }
 }
