@@ -55,6 +55,7 @@
 				<string>com.googleusercontent.apps.741024709189-q2j501irs1kp9p121hptdnmaj4rn1hcf</string>
 			</array>
 		</dict>
+	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>Cette application a besoin d'accéder à votre caméra pour scanner les codes QR de présence.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
