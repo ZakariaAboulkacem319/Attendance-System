@@ -34,21 +34,11 @@ class _StudentPageState extends State<StudentPage> {
   Future<void> _initCamera() async {
     try {
       final status = await Permission.camera.request();
-      if (status.isGranted) {
-        await _scannerController.start();
-        if (mounted) {
-          setState(() {
-            _hasPermission = true;
-            _permissionChecked = true;
-          });
-        }
-      } else {
-        if (mounted) {
-          setState(() {
-            _hasPermission = false;
-            _permissionChecked = true;
-          });
-        }
+      if (mounted) {
+        setState(() {
+          _hasPermission = status.isGranted;
+          _permissionChecked = true;
+        });
       }
     } catch (e) {
       if (mounted) {
