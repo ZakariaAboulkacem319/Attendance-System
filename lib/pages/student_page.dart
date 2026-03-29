@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
@@ -32,12 +33,22 @@ class _StudentPageState extends State<StudentPage> {
 
   Future<void> _initCamera() async {
     try {
-      await _scannerController.start();
-      if (mounted) {
-        setState(() {
-          _hasPermission = true;
-          _permissionChecked = true;
-        });
+      final status = await Permission.camera.request();
+      if (status.isGranted) {
+        await _scannerController.start();
+        if (mounted) {
+          setState(() {
+            _hasPermission = true;
+            _permissionChecked = true;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _hasPermission = false;
+            _permissionChecked = true;
+          });
+        }
       }
     } catch (e) {
       if (mounted) {

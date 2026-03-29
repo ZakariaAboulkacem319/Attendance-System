@@ -45,6 +45,8 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>L'application a besoin de votre caméra pour scanner les codes QR de présence de vos professeurs.</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
