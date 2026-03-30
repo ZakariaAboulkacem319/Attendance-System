@@ -138,28 +138,30 @@ class _StudentDashboardPageState extends State<StudentDashboardPage> {
 
                     final attendances = attendanceSnapshot.data?.docs ?? [];
 
-                    // Create a set of session IDs where student was present
-                    final Set<String> presentSessionIds = {};
-                    for (var logDoc in attendances) {
-                      final data = logDoc.data();
-                      final pSubj = data['subject'] ?? '';
-                      final pClass = data['className'] ?? '';
-                      final pDate = data['date'] ?? '';
-                      final pStart = data['sessionStart'] ?? 'none';
-                      final pEnd = data['sessionEnd'] ?? 'none';
-                      final generatedSessionId = '${pSubj}_${pClass}_${pDate}_${pStart}_${pEnd}';
-                      presentSessionIds.add(generatedSessionId);
-                    }
-
                     // Categorize sessions
                     final List<Map<String, dynamic>> presentSessions = [];
                     final List<Map<String, dynamic>> absentSessions = [];
 
                     for (var gDoc in globalSessions) {
                       final gData = gDoc.data();
-                      final sessionId = gData['sessionId'] as String;
+                      final gSubj = (gData['subject'] ?? '').toString().trim();
+                      final gDate = (gData['date'] ?? '').toString().trim();
+                      final gStart = (gData['sessionStart'] ?? '').toString().trim();
 
-                      if (presentSessionIds.contains(sessionId)) {
+                      bool isPresent = false;
+                      for (var logDoc in attendances) {
+                        final data = logDoc.data();
+                        final pSubj = (data['subject'] ?? '').toString().trim();
+                        final pDate = (data['date'] ?? '').toString().trim();
+                        final pStart = (data['sessionStart'] ?? '').toString().trim();
+
+                        if (pSubj == gSubj && pDate == gDate && pStart == gStart && gDate.isNotEmpty) {
+                          isPresent = true;
+                          break;
+                        }
+                      }
+
+                      if (isPresent) {
                         presentSessions.add(gData);
                       } else {
                         absentSessions.add(gData);

@@ -74,11 +74,11 @@ class _StudentPageState extends State<StudentPage> {
           if (user != null) {
             // Parse QR data: "subject|className|date|startTime|endTime"
             final parts = code.split('|');
-            final subject = parts[0];
-            final qrClassName = parts.length > 1 ? parts[1] : '';
-            final qrDate = parts.length > 2 ? parts[2] : '';
-            final sessionStart = parts.length > 3 ? parts[3] : '';
-            final sessionEnd = parts.length > 4 ? parts[4] : '';
+            final subject = parts[0].trim();
+            final qrClassName = parts.length > 1 ? parts[1].trim() : '';
+            final qrDate = parts.length > 2 ? parts[2].trim() : '';
+            final sessionStart = parts.length > 3 ? parts[3].trim() : '';
+            final sessionEnd = parts.length > 4 ? parts[4].trim() : '';
 
             // 1) Verify student's class matches the session's class
             final userInfo = await _firestoreService.getUserInfo(user.uid);
