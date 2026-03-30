@@ -45,10 +45,17 @@ class _TeacherPageState extends State<TeacherPage> {
   String _selectedClass = 'GI1';
   String _selectedSessionLabel = 'Matin (08:30 à 12:30)';
   bool _sessionActive = false;
+  late String _currentDate;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentDate = DateTime.now().toIso8601String().split('T')[0];
+  }
 
   String get _qrData {
     final times = _predefinedSessions[_selectedSessionLabel]!;
-    return '$_selectedSubject|$_selectedClass|${times[0]}|${times[1]}';
+    return '$_selectedSubject|$_selectedClass|$_currentDate|${times[0]}|${times[1]}';
   }
 
   void _logout() async {
@@ -60,7 +67,27 @@ class _TeacherPageState extends State<TeacherPage> {
     );
   }
 
-  void _toggleSession() {
+  void _toggleSession() async {
+    if (!_sessionActive) {
+      // Starting session
+      try {
+        final times = _predefinedSessions[_selectedSessionLabel]!;
+        await _firestoreService.createSession(
+          subject: _selectedSubject,
+          className: _selectedClass,
+          date: _currentDate,
+          sessionStart: times[0],
+          sessionEnd: times[1],
+          teacherId: _authService.currentUser?.uid ?? 'unknown',
+        );
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur: $e')),
+        );
+        return;
+      }
+    }
     setState(() => _sessionActive = !_sessionActive);
   }
 
@@ -476,6 +503,7 @@ class _TeacherPageState extends State<TeacherPage> {
                         sessionStart: _predefinedSessions[_selectedSessionLabel]![0],
                         sessionEnd: _predefinedSessions[_selectedSessionLabel]![1],
                         className: _selectedClass,
+                        date: _currentDate,
                       ),
                       builder: (context, snapshot) {
                         if (snapshot.connectionState == ConnectionState.waiting) {

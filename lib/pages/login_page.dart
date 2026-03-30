@@ -3,7 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/auth_service.dart';
-import 'student_page.dart';
+import 'student_dashboard_page.dart';
 import 'teacher_page.dart';
 import 'signup_page.dart';
 import 'role_selection_page.dart';
@@ -72,7 +72,7 @@ class _WelcomePageState extends State<WelcomePage> {
       if (role == 'student') {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const StudentPage()),
+          MaterialPageRoute(builder: (_) => const StudentDashboardPage()),
         );
       } else if (role == 'teacher') {
         Navigator.pushReplacement(

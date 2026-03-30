@@ -20,6 +20,7 @@ class FirestoreService {
   Future<bool> checkAlreadyMarked({
     required String subject,
     required String className,
+    required String date,
     required String uid,
     required String sessionStart,
     required String sessionEnd,
@@ -30,6 +31,7 @@ class FirestoreService {
           .where('uid', isEqualTo: uid)
           .where('subject', isEqualTo: subject)
           .where('className', isEqualTo: className)
+          .where('date', isEqualTo: date)
           .where('sessionStart', isEqualTo: sessionStart)
           .where('sessionEnd', isEqualTo: sessionEnd)
           .limit(1)
@@ -44,6 +46,7 @@ class FirestoreService {
   Future<void> markAttendance(
     String subject,
     String className,
+    String date,
     String uid, {
     String? sessionStart,
     String? sessionEnd,
@@ -51,7 +54,7 @@ class FirestoreService {
     try {
       final now = FieldValue.serverTimestamp();
 
-      final sessionId = '${subject}_${className}_${sessionStart ?? "none"}_${sessionEnd ?? "none"}';
+      final sessionId = '${subject}_${className}_${date}_${sessionStart ?? "none"}_${sessionEnd ?? "none"}';
 
       await _db
           .collection('attendance')
@@ -62,6 +65,7 @@ class FirestoreService {
         'present': true,
         'subject': subject,
         'className': className,
+        'date': date,
         'timestamp': now,
         'sessionStart': sessionStart ?? '',
         'sessionEnd': sessionEnd ?? '',
@@ -71,6 +75,7 @@ class FirestoreService {
         'uid': uid,
         'subject': subject,
         'className': className,
+        'date': date,
         'timestamp': now,
         'sessionStart': sessionStart ?? '',
         'sessionEnd': sessionEnd ?? '',
@@ -84,10 +89,11 @@ class FirestoreService {
   Stream<QuerySnapshot> getAttendedStudentsStream(
     String subject, {
     required String className,
+    required String date,
     String? sessionStart,
     String? sessionEnd,
   }) {
-    final sessionId = '${subject}_${className}_${sessionStart ?? "none"}_${sessionEnd ?? "none"}';
+    final sessionId = '${subject}_${className}_${date}_${sessionStart ?? "none"}_${sessionEnd ?? "none"}';
     return _db
         .collection('attendance')
         .doc(sessionId)
@@ -114,6 +120,40 @@ class FirestoreService {
         .where('subject', isEqualTo: subject)
         .orderBy('timestamp', descending: true)
         .snapshots();
+  }
+
+  // --- NEW: Global Class Sessions Tracking ---
+  Future<void> createSession({
+    required String subject,
+    required String className,
+    required String date,
+    required String sessionStart,
+    required String sessionEnd,
+    required String teacherId,
+  }) async {
+    try {
+      final sessionId = '${subject}_${className}_${date}_${sessionStart}_${sessionEnd}';
+      
+      await _db.collection('class_sessions').doc(sessionId).set({
+        'sessionId': sessionId,
+        'subject': subject,
+        'className': className,
+        'date': date,
+        'sessionStart': sessionStart,
+        'sessionEnd': sessionEnd,
+        'teacherId': teacherId,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      throw e.toString();
+    }
+  }
+
+  Stream<QuerySnapshot<Map<String, dynamic>>> getAllClassSessions(String className) {
+    return _db
+        .collection('class_sessions')
+        .where('className', isEqualTo: className)
+        .snapshots(); // Do not use orderBy here to prevent Firebase missing index errors. Will be sorted locally.
   }
 
   // Get student stats

@@ -6,7 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'services/auth_service.dart';
 import 'services/firestore_service.dart';
 import 'pages/login_page.dart';
-import 'pages/student_page.dart';
+import 'pages/student_dashboard_page.dart';
 import 'pages/teacher_page.dart';
 import 'pages/admin_page.dart';
 import 'pages/role_selection_page.dart';
@@ -192,7 +192,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
     }
 
     if (_role == 'student') {
-      return const StudentPage(key: ValueKey('student_page'));
+      return const StudentDashboardPage(key: ValueKey('student_dashboard_page'));
     } else if (_role == 'teacher') {
       return const TeacherPage(key: ValueKey('teacher_page'));
     } else if (_role == 'admin') {

@@ -72,12 +72,13 @@ class _StudentPageState extends State<StudentPage> {
         try {
           final user = _authService.currentUser;
           if (user != null) {
-            // Parse QR data: "subject|className|startTime|endTime"
+            // Parse QR data: "subject|className|date|startTime|endTime"
             final parts = code.split('|');
             final subject = parts[0];
             final qrClassName = parts.length > 1 ? parts[1] : '';
-            final sessionStart = parts.length > 2 ? parts[2] : '';
-            final sessionEnd = parts.length > 3 ? parts[3] : '';
+            final qrDate = parts.length > 2 ? parts[2] : '';
+            final sessionStart = parts.length > 3 ? parts[3] : '';
+            final sessionEnd = parts.length > 4 ? parts[4] : '';
 
             // 1) Verify student's class matches the session's class
             final userInfo = await _firestoreService.getUserInfo(user.uid);
@@ -95,6 +96,7 @@ class _StudentPageState extends State<StudentPage> {
                 subject: subject,
                 className: qrClassName,
                 uid: user.uid,
+                date: qrDate,
                 sessionStart: sessionStart,
                 sessionEnd: sessionEnd,
               );
@@ -110,21 +112,13 @@ class _StudentPageState extends State<StudentPage> {
             await _firestoreService.markAttendance(
               subject,
               qrClassName,
+              qrDate,
               user.uid,
               sessionStart: sessionStart.isNotEmpty ? sessionStart : null,
               sessionEnd: sessionEnd.isNotEmpty ? sessionEnd : null,
             );
             if (!mounted) return;
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (_) => ConfirmationPage(
-                  subject: subject,
-                  sessionStart: sessionStart.isNotEmpty ? sessionStart : null,
-                  sessionEnd: sessionEnd.isNotEmpty ? sessionEnd : null,
-                ),
-              ),
-            );
+            Navigator.pop(context); // Return to Dashboard
           }
         } catch (e) {
           setState(() => _isProcessing = false);
@@ -240,130 +234,13 @@ class _StudentPageState extends State<StudentPage> {
     return Scaffold(
       backgroundColor: const Color(0xFFFFF9F2),
       appBar: AppBar(
-        title: FutureBuilder<Map<String, String>>(
-          future: _firestoreService.getUserInfo(uid),
-          builder: (context, snapshot) {
-            final name =
-                snapshot.data?['name'] ??
-                _authService.currentUser?.email ??
-                'Étudiant';
-            final userClass = snapshot.data?['class'] ?? '';
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: GoogleFonts.poppins(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-                if (userClass.isNotEmpty)
-                  Text(
-                    userClass,
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      color: const Color(0xFFEF7F1A),
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-              ],
-            );
-          },
+        title: Text(
+          'Scanner un code QR',
+          style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.history_rounded, color: Color(0xFFEF7F1A)),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const StudentHistoryPage()),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout_rounded, color: Colors.redAccent),
-            onPressed: _logout,
-          ),
-        ],
       ),
       body: Column(
         children: [
-          // Stats Card
-          FutureBuilder<Map<String, dynamic>>(
-            future: _firestoreService.getStudentStats(uid),
-            builder: (context, snapshot) {
-              final stats = snapshot.data;
-              final total = stats?['totalSessions'] ?? 0;
-              final lastSubject = stats?['lastSubject'] ?? '';
-              final lastDate = stats?['lastDate'] as DateTime?;
-
-              return Container(
-                margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(18),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.04),
-                      blurRadius: 12,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEF7F1A).withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: const Icon(
-                        Icons.bar_chart_rounded,
-                        color: Color(0xFFEF7F1A),
-                        size: 28,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '$total présence${total > 1 ? 's' : ''}',
-                            style: GoogleFonts.poppins(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                              color: Colors.black87,
-                            ),
-                          ),
-                          if (lastSubject.isNotEmpty)
-                            Text(
-                              'Dernière : $lastSubject${lastDate != null ? ' • ${lastDate.day.toString().padLeft(2, '0')}/${lastDate.month.toString().padLeft(2, '0')}' : ''}',
-                              style: GoogleFonts.poppins(
-                                fontSize: 12,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                          if (lastSubject.isEmpty)
-                            Text(
-                              'Aucune présence enregistrée',
-                              style: GoogleFonts.poppins(
-                                fontSize: 12,
-                                color: Colors.grey[500],
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-
           // Scanner Area
           Expanded(
             child: !_permissionChecked
