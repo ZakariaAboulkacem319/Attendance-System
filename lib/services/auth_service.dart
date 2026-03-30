@@ -28,15 +28,27 @@ class AuthService {
     }
   }
 
+  Future<void> _printJwt(User? user) async {
+    if (user != null) {
+      final jwt = await user.getIdToken();
+      debugPrint('\n\n==========================================');
+      debugPrint('🔑 NOUVEAU TOKEN JWT FIREBASE OBTENU :');
+      debugPrint(jwt);
+      debugPrint('==========================================\n\n');
+    }
+  }
+
   Future<UserCredential?> signInWithEmailAndPassword(
     String email,
     String password,
   ) async {
     try {
-      return await _auth.signInWithEmailAndPassword(
+      final cred = await _auth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
+      await _printJwt(cred.user);
+      return cred;
     } catch (e) {
       rethrow;
     }
@@ -54,7 +66,9 @@ class AuthService {
         idToken: googleAuth.idToken,
       );
 
-      return await _auth.signInWithCredential(credential);
+      final cred = await _auth.signInWithCredential(credential);
+      await _printJwt(cred.user);
+      return cred;
     } catch (e) {
       rethrow;
     }

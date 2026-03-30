@@ -25,31 +25,30 @@ class _TeacherPageState extends State<TeacherPage> {
     'Après-midi (14:30 à 17:30)': ['14:30', '17:30'],
   };
   
+  final List<String> _subjects = [
+    'Algorithmique',
+    'Développement Web',
+    'Base de Données',
+    'Réseaux & Sécurité',
+    'Intelligence Artificielle',
+    'Systèmes d\'Exploitation',
+  ];
+
+  final List<String> _classes = [
+    'Bachelor',
+    'GI1',
+    'GI2',
+    'GI3',
+  ];
+
+  String _selectedSubject = 'Algorithmique';
+  String _selectedClass = 'GI1';
   String _selectedSessionLabel = 'Matin (08:30 à 12:30)';
   bool _sessionActive = false;
-  String _assignedSubject = '';
-
-  @override
-  void initState() {
-    super.initState();
-    _loadTeacherData();
-  }
-
-  Future<void> _loadTeacherData() async {
-    final uid = _authService.currentUser?.uid;
-    if (uid != null) {
-      final info = await _firestoreService.getUserInfo(uid);
-      if (mounted) {
-        setState(() {
-          _assignedSubject = info['assignedSubject'] ?? 'Matière Non Assignée';
-        });
-      }
-    }
-  }
 
   String get _qrData {
     final times = _predefinedSessions[_selectedSessionLabel]!;
-    return '$_assignedSubject|${times[0]}|${times[1]}';
+    return '$_selectedSubject|$_selectedClass|${times[0]}|${times[1]}';
   }
 
   void _logout() async {
@@ -62,15 +61,6 @@ class _TeacherPageState extends State<TeacherPage> {
   }
 
   void _toggleSession() {
-    if (_assignedSubject.isEmpty || _assignedSubject == 'Matière Non Assignée') {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Impossible de démarrer, aucune matière assignée."),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
-      return;
-    }
     setState(() => _sessionActive = !_sessionActive);
   }
 
@@ -87,14 +77,15 @@ class _TeacherPageState extends State<TeacherPage> {
           IconButton(
             icon: const Icon(Icons.history_rounded, color: Color(0xFFEF7F1A)),
             onPressed: () {
-              if (_assignedSubject.isNotEmpty) {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => TeacherHistoryPage(subject: _assignedSubject),
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => TeacherHistoryPage(
+                    subject: _selectedSubject,
+                    className: _selectedClass,
                   ),
-                );
-              }
+                ),
+              );
             },
           ),
           IconButton(
@@ -109,11 +100,6 @@ class _TeacherPageState extends State<TeacherPage> {
         ),
         builder: (context, nameSnapshot) {
           final teacherName = nameSnapshot.data?['name'] ?? 'Professeur';
-          final loadedSubject = nameSnapshot.data?['assignedSubject'] ?? '';
-          if (loadedSubject.isNotEmpty && _assignedSubject == '') {
-            // Synchronize state if needed initially
-            _assignedSubject = loadedSubject;
-          }
 
           return SingleChildScrollView(
             child: Padding(
@@ -185,7 +171,7 @@ class _TeacherPageState extends State<TeacherPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Locked Subject Display
+                        // Subject Target Dropdown
                         Text(
                           'Matière enseignée',
                           style: GoogleFonts.poppins(
@@ -194,28 +180,77 @@ class _TeacherPageState extends State<TeacherPage> {
                           ),
                         ),
                         const SizedBox(height: 10),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[100],
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.grey[300]!),
+                        DropdownButtonFormField<String>(
+                          value: _selectedSubject,
+                          icon: const Icon(Icons.menu_book_rounded),
+                          decoration: InputDecoration(
+                            filled: true,
+                            fillColor: const Color(0xFFFCF7F1),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
                           ),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.menu_book_rounded, color: Colors.grey, size: 20),
-                              const SizedBox(width: 10),
-                              Text(
-                                _assignedSubject.isEmpty ? 'Chargement...' : _assignedSubject,
-                                style: GoogleFonts.poppins(
-                                  color: Colors.black87,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
+                          style: GoogleFonts.poppins(
+                            color: Colors.black87,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
                           ),
+                          items: _subjects.map((String subject) {
+                            return DropdownMenuItem<String>(
+                              value: subject,
+                              child: Text(subject),
+                            );
+                          }).toList(),
+                          onChanged: _sessionActive
+                              ? null
+                              : (String? newValue) {
+                                  if (newValue != null) {
+                                    setState(() => _selectedSubject = newValue);
+                                  }
+                                },
+                        ),
+                        
+                        const SizedBox(height: 24),
+
+                        // Class Target Dropdown
+                        Text(
+                          'Classe concernée',
+                          style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        DropdownButtonFormField<String>(
+                          value: _selectedClass,
+                          icon: const Icon(Icons.people_alt_rounded),
+                          decoration: InputDecoration(
+                            filled: true,
+                            fillColor: const Color(0xFFFCF7F1),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                          style: GoogleFonts.poppins(
+                            color: Colors.black87,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          items: _classes.map((String className) {
+                            return DropdownMenuItem<String>(
+                              value: className,
+                              child: Text(className),
+                            );
+                          }).toList(),
+                          onChanged: _sessionActive
+                              ? null
+                              : (String? newValue) {
+                                  if (newValue != null) {
+                                    setState(() => _selectedClass = newValue);
+                                  }
+                                },
                         ),
                         
                         const SizedBox(height: 24),
@@ -359,7 +394,7 @@ class _TeacherPageState extends State<TeacherPage> {
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            _assignedSubject,
+                            _selectedSubject,
                             style: GoogleFonts.poppins(
                               fontWeight: FontWeight.bold,
                               fontSize: 18,
@@ -367,7 +402,7 @@ class _TeacherPageState extends State<TeacherPage> {
                             ),
                           ),
                           Text(
-                            _selectedSessionLabel,
+                            'Classe: $_selectedClass  •  $_selectedSessionLabel',
                             style: GoogleFonts.poppins(
                               fontSize: 14,
                               color: Colors.grey[600],
@@ -437,9 +472,10 @@ class _TeacherPageState extends State<TeacherPage> {
                     // Students Stream
                     StreamBuilder<QuerySnapshot>(
                       stream: _firestoreService.getAttendedStudentsStream(
-                        _assignedSubject,
+                        _selectedSubject,
                         sessionStart: _predefinedSessions[_selectedSessionLabel]![0],
                         sessionEnd: _predefinedSessions[_selectedSessionLabel]![1],
+                        className: _selectedClass,
                       ),
                       builder: (context, snapshot) {
                         if (snapshot.connectionState == ConnectionState.waiting) {

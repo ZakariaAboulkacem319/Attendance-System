@@ -5,8 +5,9 @@ import '../services/firestore_service.dart';
 
 class TeacherHistoryPage extends StatefulWidget {
   final String subject;
+  final String? className;
 
-  const TeacherHistoryPage({super.key, required this.subject});
+  const TeacherHistoryPage({super.key, required this.subject, this.className});
 
   @override
   State<TeacherHistoryPage> createState() => _TeacherHistoryPageState();
@@ -48,7 +49,7 @@ class _TeacherHistoryPageState extends State<TeacherHistoryPage> {
       backgroundColor: const Color(0xFFFFF9F2),
       appBar: AppBar(
         title: Text(
-          'Historique - ${widget.subject}',
+          'Historique - ${widget.subject}${widget.className != null ? ' (${widget.className})' : ''}',
           style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16),
         ),
         actions: [
@@ -138,8 +139,14 @@ class _TeacherHistoryPageState extends State<TeacherHistoryPage> {
                 // Filter locally by selected date
                 final allDocs = snapshot.data?.docs ?? [];
                 final docs = allDocs.where((doc) {
-                  final timestamp = (doc.data()['timestamp'] as Timestamp?)?.toDate();
+                  final data = doc.data();
+                  final timestamp = (data['timestamp'] as Timestamp?)?.toDate();
                   if (timestamp == null) return false;
+                  
+                  if (widget.className != null && widget.className!.isNotEmpty) {
+                    if (data['className'] != widget.className) return false;
+                  }
+
                   return timestamp.year == _selectedDate.year &&
                          timestamp.month == _selectedDate.month &&
                          timestamp.day == _selectedDate.day;

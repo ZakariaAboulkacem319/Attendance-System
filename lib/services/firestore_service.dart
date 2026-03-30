@@ -19,6 +19,7 @@ class FirestoreService {
   // Check if student already marked attendance for this session
   Future<bool> checkAlreadyMarked({
     required String subject,
+    required String className,
     required String uid,
     required String sessionStart,
     required String sessionEnd,
@@ -28,6 +29,7 @@ class FirestoreService {
           .collection('attendance_logs')
           .where('uid', isEqualTo: uid)
           .where('subject', isEqualTo: subject)
+          .where('className', isEqualTo: className)
           .where('sessionStart', isEqualTo: sessionStart)
           .where('sessionEnd', isEqualTo: sessionEnd)
           .limit(1)
@@ -41,6 +43,7 @@ class FirestoreService {
   // Mark attendance (session-aware)
   Future<void> markAttendance(
     String subject,
+    String className,
     String uid, {
     String? sessionStart,
     String? sessionEnd,
@@ -48,7 +51,7 @@ class FirestoreService {
     try {
       final now = FieldValue.serverTimestamp();
 
-      final sessionId = '${subject}_${sessionStart ?? "none"}_${sessionEnd ?? "none"}';
+      final sessionId = '${subject}_${className}_${sessionStart ?? "none"}_${sessionEnd ?? "none"}';
 
       await _db
           .collection('attendance')
@@ -58,6 +61,7 @@ class FirestoreService {
           .set({
         'present': true,
         'subject': subject,
+        'className': className,
         'timestamp': now,
         'sessionStart': sessionStart ?? '',
         'sessionEnd': sessionEnd ?? '',
@@ -66,6 +70,7 @@ class FirestoreService {
       await _db.collection('attendance_logs').add({
         'uid': uid,
         'subject': subject,
+        'className': className,
         'timestamp': now,
         'sessionStart': sessionStart ?? '',
         'sessionEnd': sessionEnd ?? '',
@@ -78,10 +83,11 @@ class FirestoreService {
   // Get attended students stream (session-aware)
   Stream<QuerySnapshot> getAttendedStudentsStream(
     String subject, {
+    required String className,
     String? sessionStart,
     String? sessionEnd,
   }) {
-    final sessionId = '${subject}_${sessionStart ?? "none"}_${sessionEnd ?? "none"}';
+    final sessionId = '${subject}_${className}_${sessionStart ?? "none"}_${sessionEnd ?? "none"}';
     return _db
         .collection('attendance')
         .doc(sessionId)

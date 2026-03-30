@@ -72,16 +72,28 @@ class _StudentPageState extends State<StudentPage> {
         try {
           final user = _authService.currentUser;
           if (user != null) {
-            // Parse QR data: "subject|startTime|endTime"
+            // Parse QR data: "subject|className|startTime|endTime"
             final parts = code.split('|');
             final subject = parts[0];
-            final sessionStart = parts.length > 1 ? parts[1] : '';
-            final sessionEnd = parts.length > 2 ? parts[2] : '';
+            final qrClassName = parts.length > 1 ? parts[1] : '';
+            final sessionStart = parts.length > 2 ? parts[2] : '';
+            final sessionEnd = parts.length > 3 ? parts[3] : '';
 
-            // Check for duplicate scan
+            // 1) Verify student's class matches the session's class
+            final userInfo = await _firestoreService.getUserInfo(user.uid);
+            final userClass = userInfo['class'] ?? '';
+
+            if (qrClassName.isNotEmpty && userClass != qrClassName) {
+              if (!mounted) return;
+              _showWrongClassDialog(subject, qrClassName, userClass);
+              return;
+            }
+
+            // 2) Check for duplicate scan
             if (sessionStart.isNotEmpty && sessionEnd.isNotEmpty) {
               final alreadyMarked = await _firestoreService.checkAlreadyMarked(
                 subject: subject,
+                className: qrClassName,
                 uid: user.uid,
                 sessionStart: sessionStart,
                 sessionEnd: sessionEnd,
@@ -94,8 +106,10 @@ class _StudentPageState extends State<StudentPage> {
               }
             }
 
+            // 3) Mark attendance
             await _firestoreService.markAttendance(
               subject,
+              qrClassName,
               user.uid,
               sessionStart: sessionStart.isNotEmpty ? sessionStart : null,
               sessionEnd: sessionEnd.isNotEmpty ? sessionEnd : null,
@@ -113,18 +127,58 @@ class _StudentPageState extends State<StudentPage> {
             );
           }
         } catch (e) {
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Erreur : $e'),
-              backgroundColor: Colors.redAccent,
-            ),
-          );
           setState(() => _isProcessing = false);
           _scannerController.start();
         }
       }
     }
+  }
+
+  void _showWrongClassDialog(
+      String subject, String targetClass, String userClass) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        icon: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.red.withValues(alpha: 0.12),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(
+            Icons.gpp_bad_rounded,
+            color: Colors.redAccent,
+            size: 40,
+          ),
+        ),
+        title: Text(
+          'Action non autorisée',
+          style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          'Cette séance de "$subject" est réservée à la classe "$targetClass".\n(Votre classe: "${userClass.isEmpty ? "Non définie" : userClass}")',
+          style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[700]),
+          textAlign: TextAlign.center,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              setState(() => _isProcessing = false);
+              _scannerController.start();
+            },
+            child: Text(
+              'Fermer',
+              style: GoogleFonts.poppins(
+                color: Colors.redAccent,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showAlreadyMarkedDialog(String subject) {

@@ -20,15 +20,6 @@ class _AdminPageState extends State<AdminPage> {
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
   
-  final List<String> _subjects = [
-    'Algorithmique',
-    'Développement Web',
-    'Base de Données',
-    'Réseaux & Sécurité',
-    'Intelligence Artificielle',
-    'Systèmes d\'Exploitation',
-  ];
-  String _selectedSubject = 'Algorithmique';
   bool _isLoading = false;
 
   void _logout() async {
@@ -76,7 +67,6 @@ class _AdminPageState extends State<AdminPage> {
           'email': _emailController.text.trim(),
           'firstName': _firstNameController.text.trim(),
           'lastName': _lastNameController.text.trim(),
-          'assignedSubject': _selectedSubject,
           'createdAt': FieldValue.serverTimestamp(),
         });
 
@@ -225,45 +215,6 @@ class _AdminPageState extends State<AdminPage> {
                     label: 'Mot de passe',
                     icon: Icons.lock_outline,
                     obscureText: true,
-                  ),
-                  const SizedBox(height: 20),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Matière enseignée',
-                      style: GoogleFonts.poppins(
-                        fontWeight: FontWeight.w600,
-                        color: Colors.grey[700],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  DropdownButtonFormField<String>(
-                    value: _selectedSubject,
-                    icon: const Icon(Icons.keyboard_arrow_down_rounded),
-                    decoration: InputDecoration(
-                      filled: true,
-                      fillColor: const Color(0xFFFCF7F1),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                    style: GoogleFonts.poppins(
-                      color: Colors.black87,
-                      fontSize: 14,
-                    ),
-                    items: _subjects.map((String subject) {
-                      return DropdownMenuItem<String>(
-                        value: subject,
-                        child: Text(subject),
-                      );
-                    }).toList(),
-                    onChanged: (String? newValue) {
-                      if (newValue != null) {
-                        setState(() => _selectedSubject = newValue);
-                      }
-                    },
                   ),
                   const SizedBox(height: 30),
                   _isLoading
