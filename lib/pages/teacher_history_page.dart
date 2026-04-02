@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 
 class TeacherHistoryPage extends StatefulWidget {
@@ -118,7 +119,7 @@ class _TeacherHistoryPageState extends State<TeacherHistoryPage> {
           // List
           Expanded(
             child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-              stream: firestoreService.getSubjectAttendanceHistory(widget.subject),
+              stream: firestoreService.getTeacherSessionsHistory(AuthService().currentUser?.uid ?? ''),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator(color: Color(0xFFEF7F1A)));
@@ -136,20 +137,19 @@ class _TeacherHistoryPageState extends State<TeacherHistoryPage> {
                   );
                 }
 
-                // Filter locally by selected date
+                // Filter locally by selected date and subject
+                final targetDate = '${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}';
+                
                 final allDocs = snapshot.data?.docs ?? [];
                 final docs = allDocs.where((doc) {
                   final data = doc.data();
-                  final timestamp = (data['timestamp'] as Timestamp?)?.toDate();
-                  if (timestamp == null) return false;
+                  if (data['subject'] != widget.subject) return false;
                   
                   if (widget.className != null && widget.className!.isNotEmpty) {
                     if (data['className'] != widget.className) return false;
                   }
 
-                  return timestamp.year == _selectedDate.year &&
-                         timestamp.month == _selectedDate.month &&
-                         timestamp.day == _selectedDate.day;
+                  return data['date'] == targetDate;
                 }).toList();
 
                 if (docs.isEmpty) {
@@ -160,7 +160,7 @@ class _TeacherHistoryPageState extends State<TeacherHistoryPage> {
                         Icon(Icons.event_busy_rounded, size: 64, color: Colors.grey[300]),
                         const SizedBox(height: 16),
                         Text(
-                          'Aucune présence enregistrée\nce jour-là.',
+                          'Aucune séance enregistrée\nce jour-là.',
                           textAlign: TextAlign.center,
                           style: GoogleFonts.poppins(
                             color: Colors.grey[500],
@@ -178,99 +178,96 @@ class _TeacherHistoryPageState extends State<TeacherHistoryPage> {
                   separatorBuilder: (context, index) => const SizedBox(height: 12),
                   itemBuilder: (context, index) {
                     final data = docs[index].data();
-                    final uid = (data['uid'] as String?) ?? '';
-                    final sessionStart = data['sessionStart'] ?? '';
-                    final sessionEnd = data['sessionEnd'] ?? '';
-                    final timestamp = (data['timestamp'] as Timestamp?)?.toDate();
-                    
-                    final String timeText = timestamp != null
-                        ? '${timestamp.hour.toString().padLeft(2, '0')}:${timestamp.minute.toString().padLeft(2, '0')}'
-                        : '--:--';
+                    return _buildSessionTile(data);
+                  },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-                    final String sessionText = sessionStart.isNotEmpty && sessionEnd.isNotEmpty
-                        ? '$sessionStart - $sessionEnd'
-                        : 'Séance non définie';
+  Widget _buildSessionTile(Map<String, dynamic> sessionData) {
+    final className = sessionData['className'] ?? '';
+    final subject = sessionData['subject'] ?? '';
+    final start = sessionData['sessionStart'] ?? '';
+    final end = sessionData['sessionEnd'] ?? '';
+    final date = sessionData['date'] ?? '';
 
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03), 
+            blurRadius: 10, 
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ExpansionTile(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        collapsedShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('$subject - $className', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 15)),
+        subtitle: Text('Créneau : $start - $end', style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey[600])),
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: const Color(0xFFEF7F1A).withValues(alpha: 0.1),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.school_rounded, color: Color(0xFFEF7F1A), size: 24),
+        ),
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.grey[50],
+              borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(16), bottomRight: Radius.circular(16)),
+            ),
+            child: StreamBuilder<QuerySnapshot>(
+              stream: firestoreService.getAttendedStudentsStream(
+                subject,
+                className: className,
+                date: date,
+                sessionStart: start,
+                sessionEnd: end,
+              ),
+              builder: (context, studentsSnap) {
+                if (studentsSnap.connectionState == ConnectionState.waiting) {
+                  return const Padding(padding: EdgeInsets.all(20), child: Center(child: CircularProgressIndicator(color: Color(0xFFEF7F1A))));
+                }
+                final sDocs = studentsSnap.data?.docs ?? [];
+                if (sDocs.isEmpty) {
+                  return Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Center(child: Text('Aucun participant', style: GoogleFonts.poppins(color: Colors.grey))),
+                  );
+                }
+                return ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: sDocs.length,
+                  itemBuilder: (context, idx) {
+                    final doc = sDocs[idx];
+                    final uid = doc.id;
+                    final ts = (doc['timestamp'] as Timestamp?)?.toDate();
                     return FutureBuilder<Map<String, String>>(
                       future: firestoreService.getUserInfo(uid),
-                      builder: (context, infoSnapshot) {
-                        final info = infoSnapshot.data ?? {'name': 'Chargement...', 'class': ''};
-                        
-                        return Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.02),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
+                      builder: (context, infoSnap) {
+                        final info = infoSnap.data ?? {'name': 'Chargement...', 'class': ''};
+                        return ListTile(
+                          leading: const CircleAvatar(
+                            backgroundColor: Colors.white, 
+                            child: Icon(Icons.person, color: Colors.grey),
                           ),
-                          child: Row(
-                            children: [
-                              CircleAvatar(
-                                backgroundColor: const Color(0xFFEF7F1A).withValues(alpha: 0.12),
-                                radius: 24,
-                                child: const Icon(
-                                  Icons.person_rounded,
-                                  color: Color(0xFFEF7F1A),
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      info['name']!,
-                                      style: GoogleFonts.poppins(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 15,
-                                        color: Colors.black87,
-                                      ),
-                                    ),
-                                    if (info['class']!.isNotEmpty)
-                                      Text(
-                                        info['class']!,
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 12,
-                                          color: const Color(0xFFEF7F1A),
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    Text(
-                                      'Créneau: $sessionText',
-                                      style: GoogleFonts.poppins(
-                                        fontSize: 12,
-                                        color: Colors.grey[600],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Text(
-                                    timeText,
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.black54,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  const Icon(
-                                    Icons.check_circle_rounded,
-                                    color: Colors.green,
-                                    size: 20,
-                                  ),
-                                ],
-                              ),
-                            ],
+                          title: Text(info['name']!, style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500)),
+                          trailing: Text(
+                            ts != null ? '${ts.hour.toString().padLeft(2,'0')}:${ts.minute.toString().padLeft(2,'0')}' : '--:--',
+                            style: GoogleFonts.poppins(color: Colors.green, fontWeight: FontWeight.bold),
                           ),
                         );
                       },

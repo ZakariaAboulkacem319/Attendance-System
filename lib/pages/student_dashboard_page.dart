@@ -5,6 +5,7 @@ import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import 'login_page.dart';
 import 'student_page.dart';
+import 'student_profile_page.dart';
 
 class StudentDashboardPage extends StatefulWidget {
   const StudentDashboardPage({super.key});
@@ -93,6 +94,18 @@ class _StudentDashboardPageState extends State<StudentDashboardPage> {
         ),
         actions: [
           IconButton(
+            icon: const Icon(Icons.person, color: Color(0xFFEF7F1A)),
+            onPressed: () async {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const StudentProfilePage()),
+              );
+              if (result == true) {
+                _loadUserInfo();
+              }
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.logout_rounded, color: Colors.redAccent),
             onPressed: _logout,
           ),
@@ -109,6 +122,12 @@ class _StudentDashboardPageState extends State<StudentDashboardPage> {
           : StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
               stream: _firestoreService.getAllClassSessions(userClass),
               builder: (context, globalSnapshot) {
+                if (globalSnapshot.hasError) {
+                  return Center(
+                    child: Text('Erreur Globale: ${globalSnapshot.error}',
+                        style: const TextStyle(color: Colors.redAccent)),
+                  );
+                }
                 if (globalSnapshot.connectionState == ConnectionState.waiting) {
                   return const Center(
                       child: CircularProgressIndicator(
@@ -129,6 +148,12 @@ class _StudentDashboardPageState extends State<StudentDashboardPage> {
                 return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
                   stream: _firestoreService.getStudentAttendanceHistory(uid),
                   builder: (context, attendanceSnapshot) {
+                    if (attendanceSnapshot.hasError) {
+                      return Center(
+                        child: Text('Erreur Présence: ${attendanceSnapshot.error}',
+                            style: const TextStyle(color: Colors.redAccent)),
+                      );
+                    }
                     if (attendanceSnapshot.connectionState ==
                         ConnectionState.waiting) {
                       return const Center(
@@ -141,12 +166,15 @@ class _StudentDashboardPageState extends State<StudentDashboardPage> {
                     // Categorize sessions
                     final List<Map<String, dynamic>> presentSessions = [];
                     final List<Map<String, dynamic>> absentSessions = [];
+                    final Set<String> matchedAttendanceDocIds = {};
 
+                    // 1. Check current Global Sessions mapped to Attendance
                     for (var gDoc in globalSessions) {
                       final gData = gDoc.data();
                       final gSubj = (gData['subject'] ?? '').toString().trim();
                       final gDate = (gData['date'] ?? '').toString().trim();
                       final gStart = (gData['sessionStart'] ?? '').toString().trim();
+                      final gToken = (gData['sessionToken'] ?? '').toString().trim();
 
                       bool isPresent = false;
                       for (var logDoc in attendances) {
@@ -154,10 +182,15 @@ class _StudentDashboardPageState extends State<StudentDashboardPage> {
                         final pSubj = (data['subject'] ?? '').toString().trim();
                         final pDate = (data['date'] ?? '').toString().trim();
                         final pStart = (data['sessionStart'] ?? '').toString().trim();
+                        final pToken = (data['sessionToken'] ?? '').toString().trim();
 
                         if (pSubj == gSubj && pDate == gDate && pStart == gStart && gDate.isNotEmpty) {
-                          isPresent = true;
-                          break;
+                          // If the global session has a token, the attendance MUST have the exact same token.
+                          if (gToken.isEmpty || pToken == gToken) {
+                            isPresent = true;
+                            matchedAttendanceDocIds.add(logDoc.id);
+                            break;
+                          }
                         }
                       }
 
@@ -167,6 +200,27 @@ class _StudentDashboardPageState extends State<StudentDashboardPage> {
                         absentSessions.add(gData);
                       }
                     }
+
+                    // 2. Add Historical Attendances (before global sessions existed)
+                    for (var logDoc in attendances) {
+                      if (!matchedAttendanceDocIds.contains(logDoc.id)) {
+                        final data = logDoc.data();
+                        // Make sure we only show them if they pertain to the student's current class context
+                        final pClass = (data['className'] ?? '').toString().trim();
+                        if (pClass == userClass || pClass.isEmpty) {
+                          presentSessions.add(data);
+                        }
+                      }
+                    }
+
+                    // Sort everything by date natively
+                    int sortByDate(Map<String, dynamic> a, Map<String, dynamic> b) {
+                      final dateA = (a['date'] ?? '').toString();
+                      final dateB = (b['date'] ?? '').toString();
+                      return dateB.compareTo(dateA); // Descending
+                    }
+                    presentSessions.sort(sortByDate);
+                    absentSessions.sort(sortByDate);
 
                     return CustomScrollView(
                       physics: const BouncingScrollPhysics(),

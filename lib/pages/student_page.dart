@@ -79,6 +79,7 @@ class _StudentPageState extends State<StudentPage> {
             final qrDate = parts.length > 2 ? parts[2].trim() : '';
             final sessionStart = parts.length > 3 ? parts[3].trim() : '';
             final sessionEnd = parts.length > 4 ? parts[4].trim() : '';
+            final sessionToken = parts.length > 5 ? parts[5].trim() : '';
 
             // 1) Verify student's class matches the session's class
             final userInfo = await _firestoreService.getUserInfo(user.uid);
@@ -99,6 +100,7 @@ class _StudentPageState extends State<StudentPage> {
                 date: qrDate,
                 sessionStart: sessionStart,
                 sessionEnd: sessionEnd,
+                sessionToken: sessionToken,
               );
 
               if (alreadyMarked) {
@@ -116,6 +118,7 @@ class _StudentPageState extends State<StudentPage> {
               user.uid,
               sessionStart: sessionStart.isNotEmpty ? sessionStart : null,
               sessionEnd: sessionEnd.isNotEmpty ? sessionEnd : null,
+              sessionToken: sessionToken.isNotEmpty ? sessionToken : null,
             );
             if (!mounted) return;
             Navigator.pop(context); // Return to Dashboard

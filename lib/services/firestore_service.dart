@@ -24,6 +24,7 @@ class FirestoreService {
     required String uid,
     required String sessionStart,
     required String sessionEnd,
+    required String sessionToken,
   }) async {
     try {
       final query = await _db
@@ -34,6 +35,7 @@ class FirestoreService {
           .where('date', isEqualTo: date)
           .where('sessionStart', isEqualTo: sessionStart)
           .where('sessionEnd', isEqualTo: sessionEnd)
+          .where('sessionToken', isEqualTo: sessionToken)
           .limit(1)
           .get();
       return query.docs.isNotEmpty;
@@ -50,6 +52,7 @@ class FirestoreService {
     String uid, {
     String? sessionStart,
     String? sessionEnd,
+    String? sessionToken,
   }) async {
     try {
       final now = FieldValue.serverTimestamp();
@@ -69,6 +72,7 @@ class FirestoreService {
         'timestamp': now,
         'sessionStart': sessionStart ?? '',
         'sessionEnd': sessionEnd ?? '',
+        'sessionToken': sessionToken ?? '',
       });
 
       await _db.collection('attendance_logs').add({
@@ -79,6 +83,7 @@ class FirestoreService {
         'timestamp': now,
         'sessionStart': sessionStart ?? '',
         'sessionEnd': sessionEnd ?? '',
+        'sessionToken': sessionToken ?? '',
       });
     } catch (e) {
       throw e.toString();
@@ -108,8 +113,7 @@ class FirestoreService {
     return _db
         .collection('attendance_logs')
         .where('uid', isEqualTo: uid)
-        .orderBy('timestamp', descending: true)
-        .snapshots();
+        .snapshots(); // Sorted locally to prevent missing index error
   }
 
   Stream<QuerySnapshot<Map<String, dynamic>>> getSubjectAttendanceHistory(
@@ -130,6 +134,7 @@ class FirestoreService {
     required String sessionStart,
     required String sessionEnd,
     required String teacherId,
+    required String sessionToken,
   }) async {
     try {
       final sessionId = '${subject}_${className}_${date}_${sessionStart}_${sessionEnd}';
@@ -141,6 +146,7 @@ class FirestoreService {
         'date': date,
         'sessionStart': sessionStart,
         'sessionEnd': sessionEnd,
+        'sessionToken': sessionToken,
         'teacherId': teacherId,
         'createdAt': FieldValue.serverTimestamp(),
       });
@@ -154,6 +160,13 @@ class FirestoreService {
         .collection('class_sessions')
         .where('className', isEqualTo: className)
         .snapshots(); // Do not use orderBy here to prevent Firebase missing index errors. Will be sorted locally.
+  }
+
+  Stream<QuerySnapshot<Map<String, dynamic>>> getTeacherSessionsHistory(String teacherId) {
+    return _db
+        .collection('class_sessions')
+        .where('teacherId', isEqualTo: teacherId)
+        .snapshots(); // Do not use orderBy here to prevent missing index errors. Will be sorted locally.
   }
 
   // Get student stats
@@ -221,6 +234,8 @@ class FirestoreService {
 
         return {
           'name': name,
+          'firstName': firstName,
+          'lastName': lastName,
           'class': userClass,
           'assignedSubject': data['assignedSubject'] ?? '',
         };
@@ -228,6 +243,24 @@ class FirestoreService {
     } catch (e) {
       // ignore
     }
-    return {'name': 'Inconnu', 'class': '', 'assignedSubject': ''};
+    return {'name': 'Inconnu', 'firstName': '', 'lastName': '', 'class': '', 'assignedSubject': ''};
+  }
+
+  // Update student profile
+  Future<void> updateStudentProfile({
+    required String uid,
+    required String firstName,
+    required String lastName,
+    required String userClass,
+  }) async {
+    try {
+      await _db.collection('users').doc(uid).update({
+        'firstName': firstName,
+        'lastName': lastName,
+        'userClass': userClass,
+      });
+    } catch (e) {
+      throw e.toString();
+    }
   }
 }

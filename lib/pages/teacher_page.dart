@@ -18,12 +18,8 @@ class _TeacherPageState extends State<TeacherPage> {
   final AuthService _authService = AuthService();
   final FirestoreService _firestoreService = FirestoreService();
 
-  // "Matin (08:30 à 12:30)" -> [08:30, 12:30]
-  // "Après-midi (14:30 à 17:30)" -> [14:30, 17:30]
-  final Map<String, List<String>> _predefinedSessions = {
-    'Matin (08:30 à 12:30)': ['08:30', '12:30'],
-    'Après-midi (14:30 à 17:30)': ['14:30', '17:30'],
-  };
+  TimeOfDay _startTime = const TimeOfDay(hour: 8, minute: 30);
+  TimeOfDay _endTime = const TimeOfDay(hour: 12, minute: 30);
   
   final List<String> _subjects = [
     'Algorithmique',
@@ -43,9 +39,9 @@ class _TeacherPageState extends State<TeacherPage> {
 
   String _selectedSubject = 'Algorithmique';
   String _selectedClass = 'GI1';
-  String _selectedSessionLabel = 'Matin (08:30 à 12:30)';
   bool _sessionActive = false;
   late String _currentDate;
+  String _currentSessionToken = '';
 
   @override
   void initState() {
@@ -53,9 +49,46 @@ class _TeacherPageState extends State<TeacherPage> {
     _currentDate = DateTime.now().toIso8601String().split('T')[0];
   }
 
+  String _formatTime(TimeOfDay time) {
+    final hr = time.hour.toString().padLeft(2, '0');
+    final mn = time.minute.toString().padLeft(2, '0');
+    return '$hr:$mn';
+  }
+
+  Future<void> _selectTime(BuildContext context, bool isStart) async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: isStart ? _startTime : _endTime,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFFEF7F1A),
+              onPrimary: Colors.white,
+              onSurface: Colors.black87,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) {
+      if (mounted) {
+        setState(() {
+          if (isStart) {
+            _startTime = picked;
+          } else {
+            _endTime = picked;
+          }
+        });
+      }
+    }
+  }
+
   String get _qrData {
-    final times = _predefinedSessions[_selectedSessionLabel]!;
-    return '$_selectedSubject|$_selectedClass|$_currentDate|${times[0]}|${times[1]}';
+    final start = _formatTime(_startTime);
+    final end = _formatTime(_endTime);
+    return '$_selectedSubject|$_selectedClass|$_currentDate|$start|$end|$_currentSessionToken';
   }
 
   void _logout() async {
@@ -71,14 +104,17 @@ class _TeacherPageState extends State<TeacherPage> {
     if (!_sessionActive) {
       // Starting session
       try {
-        final times = _predefinedSessions[_selectedSessionLabel]!;
+        final start = _formatTime(_startTime);
+        final end = _formatTime(_endTime);
+        _currentSessionToken = DateTime.now().millisecondsSinceEpoch.toString();
         await _firestoreService.createSession(
           subject: _selectedSubject,
           className: _selectedClass,
           date: _currentDate,
-          sessionStart: times[0],
-          sessionEnd: times[1],
+          sessionStart: start,
+          sessionEnd: end,
           teacherId: _authService.currentUser?.uid ?? 'unknown',
+          sessionToken: _currentSessionToken,
         );
       } catch (e) {
         if (!mounted) return;
@@ -282,7 +318,7 @@ class _TeacherPageState extends State<TeacherPage> {
                         
                         const SizedBox(height: 24),
 
-                        // Predefined Sessions Dropdown
+                        // Time Pickers
                         Text(
                           'Créneau de la séance',
                           style: GoogleFonts.poppins(
@@ -291,35 +327,62 @@ class _TeacherPageState extends State<TeacherPage> {
                           ),
                         ),
                         const SizedBox(height: 10),
-                        DropdownButtonFormField<String>(
-                          value: _selectedSessionLabel,
-                          icon: const Icon(Icons.access_time_filled_rounded),
-                          decoration: InputDecoration(
-                            filled: true,
-                            fillColor: const Color(0xFFFCF7F1),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
+                        Row(
+                          children: [
+                            Expanded(
+                              child: InkWell(
+                                onTap: _sessionActive ? null : () => _selectTime(context, true),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFCF7F1),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.access_time_rounded, color: Colors.grey, size: 20),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Début: ${_formatTime(_startTime)}',
+                                        style: GoogleFonts.poppins(
+                                          color: Colors.black87,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
                             ),
-                          ),
-                          style: GoogleFonts.poppins(
-                            color: Colors.black87,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          items: _predefinedSessions.keys.map((String sessionLabel) {
-                            return DropdownMenuItem<String>(
-                              value: sessionLabel,
-                              child: Text(sessionLabel),
-                            );
-                          }).toList(),
-                          onChanged: _sessionActive
-                              ? null
-                              : (String? newValue) {
-                                  if (newValue != null) {
-                                    setState(() => _selectedSessionLabel = newValue);
-                                  }
-                                },
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: InkWell(
+                                onTap: _sessionActive ? null : () => _selectTime(context, false),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFCF7F1),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.access_time_filled_rounded, color: Colors.grey, size: 20),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Fin: ${_formatTime(_endTime)}',
+                                        style: GoogleFonts.poppins(
+                                          color: Colors.black87,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
 
                         const SizedBox(height: 30),
@@ -429,7 +492,7 @@ class _TeacherPageState extends State<TeacherPage> {
                             ),
                           ),
                           Text(
-                            'Classe: $_selectedClass  •  $_selectedSessionLabel',
+                            'Classe: $_selectedClass  •  ${_formatTime(_startTime)} - ${_formatTime(_endTime)}',
                             style: GoogleFonts.poppins(
                               fontSize: 14,
                               color: Colors.grey[600],
@@ -500,8 +563,8 @@ class _TeacherPageState extends State<TeacherPage> {
                     StreamBuilder<QuerySnapshot>(
                       stream: _firestoreService.getAttendedStudentsStream(
                         _selectedSubject,
-                        sessionStart: _predefinedSessions[_selectedSessionLabel]![0],
-                        sessionEnd: _predefinedSessions[_selectedSessionLabel]![1],
+                        sessionStart: _formatTime(_startTime),
+                        sessionEnd: _formatTime(_endTime),
                         className: _selectedClass,
                         date: _currentDate,
                       ),

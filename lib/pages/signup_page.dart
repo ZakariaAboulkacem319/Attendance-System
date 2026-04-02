@@ -18,9 +18,11 @@ class _SignUpPageState extends State<SignUpPage> {
   final _confirmPasswordController = TextEditingController();
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
-  final _classController = TextEditingController();
   final _authService = AuthService();
   final _firestoreService = FirestoreService();
+
+  final List<String> _availableClasses = ['Bachelor', 'GI1', 'GI2'];
+  String? _selectedClass;
 
   final String _selectedRole = 'student';
   bool _isLoading = false;
@@ -31,8 +33,8 @@ class _SignUpPageState extends State<SignUpPage> {
         _passwordController.text.isEmpty ||
         _firstNameController.text.isEmpty ||
         _lastNameController.text.isEmpty ||
-        (_selectedRole == 'student' && _classController.text.isEmpty)) {
-      _showError('Veuillez remplir tous les champs');
+        (_selectedRole == 'student' && _selectedClass == null)) {
+      _showError('Veuillez remplir tous les champs et choisir une classe');
       return;
     }
     if (_passwordController.text != _confirmPasswordController.text) {
@@ -57,7 +59,7 @@ class _SignUpPageState extends State<SignUpPage> {
           firstName: _firstNameController.text.trim(),
           lastName: _lastNameController.text.trim(),
           userClass: _selectedRole == 'student'
-              ? _classController.text.trim()
+              ? _selectedClass
               : null,
         );
 
@@ -167,11 +169,7 @@ class _SignUpPageState extends State<SignUpPage> {
                         ],
                       ),
                       const SizedBox(height: 20),
-                      _buildTextField(
-                        controller: _classController,
-                        label: 'Classe (ex: GI2)',
-                        icon: Icons.class_outlined,
-                      ),
+                      _buildClassDropdown(),
                       const SizedBox(height: 20),
                       _buildTextField(
                         controller: _emailController,
@@ -276,6 +274,51 @@ class _SignUpPageState extends State<SignUpPage> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildClassDropdown() {
+    return DropdownButtonFormField<String>(
+      value: _selectedClass,
+      style: GoogleFonts.poppins(color: Colors.black87, fontSize: 15),
+      decoration: InputDecoration(
+        labelText: 'Classe',
+        labelStyle: GoogleFonts.poppins(color: Colors.grey[600]),
+        prefixIcon: const Icon(Icons.class_outlined, color: Color(0xFFEF7F1A)),
+        filled: true,
+        fillColor: Colors.grey[50],
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: BorderSide(color: Colors.grey[200]!),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15),
+          borderSide: const BorderSide(color: Color(0xFFEF7F1A), width: 2),
+        ),
+      ),
+      dropdownColor: Colors.white,
+      borderRadius: BorderRadius.circular(15),
+      icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFFEF7F1A)),
+      hint: Text(
+        'Choisir une classe',
+        style: GoogleFonts.poppins(color: Colors.grey[400]),
+      ),
+      items: _availableClasses.map((String className) {
+        return DropdownMenuItem<String>(
+          value: className,
+          child: Text(
+            className,
+            style: GoogleFonts.poppins(fontWeight: FontWeight.w500),
+          ),
+        );
+      }).toList(),
+      onChanged: (String? newValue) {
+        setState(() => _selectedClass = newValue);
+      },
     );
   }
 
